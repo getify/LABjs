@@ -300,7 +300,7 @@
 		newOpts.preload = !(!newOpts.preload);
 		newOpts.dupe = !(!newOpts.dupe);
 		newOpts.base = (typeof newOpts.base === sSTRING) ? newOpts.base : "";
-		if (!newOpts.preload) newOpts.cache = newOpts.order = newOpts.xhr = bFALSE;
+		if (!newOpts.preload) newOpts.cache = newOpts.order = newOpts.xhr = bFALSE; // turn off all flags if preloading is disabled
 		newOpts.which = (newOpts.which === sHEAD || newOpts.which === sBODY) ? newOpts.which : sHEAD;
 		return newOpts;
 	}
