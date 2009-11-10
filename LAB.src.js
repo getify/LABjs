@@ -104,7 +104,7 @@
 				if (scripts.hasOwnProperty(key) && !(scripts[key][sDONE])) return;
 			}
 			ready = bTRUE;
-			if (ready) waitFunc();
+			waitFunc();
 		}
 		function loadTriggerExecute(scriptentry) {
 			if (typeof scriptentry[sLOADTRIGGER] === sFUNCTION) {
@@ -239,8 +239,7 @@
 					for (var i=0; i<args.length; i++) {
 						if (i===0) {
 							queueAndExecute(function(){
-								var arg = (typeof args[0] === sOBJECT) ? args[0] : {src:args[0]};
-								loadScript(arg);
+								loadScript((typeof args[0] === sOBJECT) ? args[0] : {src:args[0]});
 							});
 						}
 						else use_engine = use_engine.script(args[i]);
@@ -250,8 +249,7 @@
 				else {
 					queueAndExecute(function(){
 						for (var i=0; i<args.length; i++) {
-							var arg = (typeof args[i] === sOBJECT) ? args[i] : {src:args[i]};
-							loadScript(arg);
+							loadScript((typeof args[i] === sOBJECT) ? args[i] : {src:args[i]});
 						}
 					});
 				}
@@ -288,18 +286,19 @@
 		}
 		return publicAPI;
 	}
-	function extendOpts(opts) {
-		var k, newOpts = {}, optMappings = {"UseCachePreload":"cache","UseLocalXHR":"xhr","UsePreloading":"preload","AlwaysPreserveOrder":"preserve","AppendTo":"which","AllowDuplicates":"dupe","BasePath":"base"};
+	function processOpts(opts) {
+		var k, newOpts = {}, 
+			boolOpts = {"UseCachePreload":"cache","UseLocalXHR":"xhr","UsePreloading":"preload","AlwaysPreserveOrder":"preserve","AllowDuplicates":"dupe"},
+			allOpts = {"AppendTo":"which","BasePath":"base"}
+		;
+		for (k in boolOpts) allOpts[k] = boolOpts[k];
 		newOpts.order = !(!global_defs.order);
-		for (k in optMappings) {
-			if (typeof global_defs[optMappings[k]] !== sUNDEF) newOpts[optMappings[k]] = (typeof opts[k] !== sUNDEF) ? opts[k] : global_defs[optMappings[k]];
+		for (k in allOpts) {
+			if (allOpts.hasOwnProperty(k) && typeof global_defs[allOpts[k]] !== sUNDEF) newOpts[allOpts[k]] = (typeof opts[k] !== sUNDEF) ? opts[k] : global_defs[allOpts[k]];
 		}
-		newOpts.preserve = !(!newOpts.preserve);
-		newOpts.cache = !(!newOpts.cache);
-		newOpts.xhr = !(!newOpts.xhr);
-		newOpts.preload = !(!newOpts.preload);
-		newOpts.dupe = !(!newOpts.dupe);
-		newOpts.base = (typeof newOpts.base === sSTRING) ? newOpts.base : "";
+		for (k in boolOpts) { // normalize bool props to actual boolean values if not already
+			if (boolOpts.hasOwnProperty(k)) newOpts[boolOpts[k]] = !(!newOpts[boolOpts[k]]);
+		}
 		if (!newOpts.preload) newOpts.cache = newOpts.order = newOpts.xhr = bFALSE; // turn off all flags if preloading is disabled
 		newOpts.which = (newOpts.which === sHEAD || newOpts.which === sBODY) ? newOpts.which : sHEAD;
 		return newOpts;
@@ -307,10 +306,10 @@
 	
 	global.$LAB = {
 		setGlobalDefaults:function(gdefs) { // intentionally does not return an "engine" instance -- must call as stand-alone function call on $LAB
-			global_defs = extendOpts(gdefs);
+			global_defs = processOpts(gdefs);
 		},
 		setOptions:function(opts){ // set options per chain
-			return engine(bFALSE,extendOpts(opts));
+			return engine(bFALSE,processOpts(opts));
 		},
 		script:function(){ // will load one or more scripts
 			return engine().script.apply(null,arguments);
