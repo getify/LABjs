@@ -1,5 +1,5 @@
 // LAB.js (LABjs :: Loading And Blocking JavaScript)
-// v1.0rc1 (c) Kyle Simpson
+// v1.0rc2a (c) Kyle Simpson
 // MIT License
 
 (function(global){
@@ -74,7 +74,7 @@
 		
 		var ready = bFALSE,
 			_use_preload = queueExec && opts.preload,
-			_use_cache = _use_preload && opts.cache,
+			_use_cache_preload = _use_preload && opts.cache,
 			_use_script_order = _use_preload && opts.order,
 			_use_xhr_preload = _use_preload && opts.xhr,
 			_auto_wait = opts.preserve,
@@ -87,6 +87,8 @@
 			scripts = {},
 			exec = []
 		;
+		
+		_use_preload = _use_cache_preload || _use_xhr_preload || _use_script_order; // if all flags are turned off, preload is moot so disable it
 		
 		function isScriptLoaded(elem,scriptentry) {
 			if ((elem[sREADYSTATE] && elem[sREADYSTATE]!=="complete" && elem[sREADYSTATE]!=="loaded") || scriptentry[sDONE]) { return bFALSE; }
@@ -119,7 +121,7 @@
 			},0);
 		}
 		function handleXHRPreload(xhr,scriptentry) {
-			if (xhr[sREADYSTATE] === 0) fCLEARINTERVAL(scriptentry[sXHRPOLL]);
+			if (xhr[sREADYSTATE] === 0) fCLEARINTERVAL(scriptentry[sXHRPOLL]); // necessary? verify against jquery source
 			if (xhr[sREADYSTATE] === 4) {
 				fCLEARINTERVAL(scriptentry[sXHRPOLL]);
 				scriptentry[sPRELOADDONE] = bTRUE;
@@ -210,13 +212,9 @@
 			scriptentry[sSRCURI] = src_uri;
 			scripts_loading = bTRUE;
 			
-			if (_use_preload && !_use_script_order) { // only use xhr/cache preloading if not script-order loading
-				if (_use_xhr_preload && same_domain) loadScriptXHR(scriptentry,src_uri,type,charset);
-				else loadScriptCache(scriptentry,src_uri,type,charset);
-			}
-			else {
-				loadScriptElem(scriptentry,src_uri,type,charset);
-			}
+			if (!_use_script_order && _use_xhr_preload && same_domain) loadScriptXHR(scriptentry,src_uri,type,charset);
+			else if (!_use_script_order && _use_cache_preload) loadScriptCache(scriptentry,src_uri,type,charset);
+			else loadScriptElem(scriptentry,src_uri,type,charset);
 		}
 		function onlyQueue(execBody) {
 			exec.push(execBody);
