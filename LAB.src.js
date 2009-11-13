@@ -34,14 +34,11 @@
 		PAGEROOT = /^[^?#]*\//.exec(oDOCLOC.href)[0], // these ROOTs do not support file:/// usage, only http:// type usage
 		DOCROOT = /^\w+\:\/\/[^\/]+/.exec(PAGEROOT)[0],
 		docScripts = fGETELEMENTSBYTAGNAME(sSCRIPT),
-		is_ie = !+"\v1", // feature detection based on Andrea Giammarchi's solution: http://webreflection.blogspot.com/2009/01/32-bytes-to-know-if-your-browser-is-ie.html
-		is_safari = /a/.__proto__=='//', // feature detections from http://www.thespanner.co.uk/2009/01/29/detecting-browsers-javascript-hacks/
-		is_chrome = /source/.test((/a/.toString+'')),
-		is_opera = /^function \(/.test([].sort),
-		is_ff = /a/[-1]=='a',
+		is_opera = global.opera && fOBJTOSTRING.call(global.opera) == '[object Opera]',
+		is_ff    = (delete Object.prototype['__count__']) === false,
 		global_defs = {
 			preload:bTRUE, // use various tricks for "preloading" scripts
-			cache:is_ie||is_safari||is_chrome, // IE/Safari/Chrome can use the "cache" trick to preload
+			cache:!(is_ff||is_opera), // browsers like IE/Safari/Chrome can use the "cache" trick to preload
 			order:is_ff||is_opera, // FF/Opera preserve execution order with script tags automatically, so just add all scripts as fast as possible
 			xhr:bTRUE, // use XHR trick to preload local scripts
 			dupe:bFALSE, // allow duplicate scripts?
