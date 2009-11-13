@@ -34,8 +34,15 @@
 		PAGEROOT = /^[^?#]*\//.exec(oDOCLOC.href)[0], // these ROOTs do not support file:/// usage, only http:// type usage
 		DOCROOT = /^\w+\:\/\/[^\/]+/.exec(PAGEROOT)[0],
 		docScripts = fGETELEMENTSBYTAGNAME(sSCRIPT),
+
+		// Ah-ha hush that fuss, feature inference is used to detect specific browsers
+		// because the techniques used in LABjs have no known feature detection. If
+		// you know of a feature test please contact me ASAP. Feature inference is used
+		// instead of user agent sniffing because the UA string can be easily
+		// spoofed and is not adequate for such a mission critical part of the code.
 		is_opera = global.opera && fOBJTOSTRING.call(global.opera) == '[object Opera]',
 		is_ff    = (delete Object.prototype['__count__']) === false,
+
 		global_defs = {
 			preload:bTRUE, // use various tricks for "preloading" scripts
 			cache:!(is_ff||is_opera), // browsers like IE/Safari/Chrome can use the "cache" trick to preload
