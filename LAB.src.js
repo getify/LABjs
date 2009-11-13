@@ -41,12 +41,12 @@
 		// instead of user agent sniffing because the UA string can be easily
 		// spoofed and is not adequate for such a mission critical part of the code.
 		is_opera = global.opera && fOBJTOSTRING.call(global.opera) == '[object Opera]',
-		is_ff    = (delete Object.prototype['__count__']) === false,
+		is_gecko = (delete Object.prototype['__count__']) === false,
 
 		global_defs = {
 			preload:bTRUE, // use various tricks for "preloading" scripts
-			cache:!(is_ff||is_opera), // browsers like IE/Safari/Chrome can use the "cache" trick to preload
-			order:is_ff||is_opera, // FF/Opera preserve execution order with script tags automatically, so just add all scripts as fast as possible
+			cache:!(is_gecko||is_opera), // browsers like IE/Safari/Chrome can use the "cache" trick to preload
+			order:is_gecko||is_opera, // FF/Opera preserve execution order with script tags automatically, so just add all scripts as fast as possible
 			xhr:bTRUE, // use XHR trick to preload local scripts
 			dupe:bFALSE, // allow duplicate scripts?
 			preserve:bFALSE, // preserve execution order of all loaded scripts (regardless of preloading)
