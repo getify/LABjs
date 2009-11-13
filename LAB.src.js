@@ -41,7 +41,7 @@
 		// instead of user agent sniffing because the UA string can be easily
 		// spoofed and is not adequate for such a mission critical part of the code.
 		is_opera = global.opera && fOBJTOSTRING.call(global.opera) == "[object Opera]",
-		is_gecko = (delete Object.prototype["__count__"]) === bFALSE,
+		is_gecko = (function(o) { o[o] = o+""; return o[o] != o+""; })(new String("__count__")),
 
 		global_defs = {
 			preload:bTRUE, // use various tricks for "preloading" scripts
