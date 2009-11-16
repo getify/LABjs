@@ -1,11 +1,10 @@
 // LAB.js (LABjs :: Loading And Blocking JavaScript)
-// v1.0rc2b (c) Kyle Simpson
+// v1.0rc2c (c) Kyle Simpson
 // MIT License
 
 (function(global){
 	var sUNDEF = "undefined",				// constants used for compression optimization
 		sSTRING = "string",
-		sOBJECT = "object",
 		sHEAD = "head",
 		sBODY = "body",
 		sFUNCTION = "function",
@@ -32,7 +31,7 @@
 		append_to = {},
 		all_scripts = {},
 		PAGEROOT = /^[^?#]*\//.exec(oDOCLOC.href)[0], // these ROOTs do not support file:/// usage, only http:// type usage
-		DOCROOT = /^\w+\:\/\/[^\/]+/.exec(PAGEROOT)[0],
+		DOCROOT = /^\w+\:\/\/\/?[^\/]+/.exec(PAGEROOT)[0], // optional third / in the protocol portion of this regex so that LABjs doesn't blow up when used in file:/// usage
 		docScripts = fGETELEMENTSBYTAGNAME(sSCRIPT),
 
 		// Ah-ha hush that fuss, feature inference is used to detect specific browsers
@@ -228,8 +227,8 @@
 			if (!queueExec || _use_preload) execBody(); // if engine is either not queueing, or is queuing in preload mode, go ahead and execute
 		}
 		function serializeArgs(args) {
-			var sargs = [];
-			for (var i=0; i<args.length; i++) {
+			var sargs = [], i;
+			for (i=0; i<args.length; i++) {
 				if (fOBJTOSTRING.call(args[i]) === "[object Array]") sargs = sargs.concat(serializeArgs(args[i]));
 				else sargs[sargs.length] = args[i];
 			}
@@ -243,7 +242,7 @@
 					for (var i=0; i<args.length; i++) {
 						if (i===0) {
 							queueAndExecute(function(){
-								loadScript((typeof args[0] === sOBJECT) ? args[0] : {src:args[0]});
+								loadScript((typeof args[0] === sSTRING) ? {src:args[0]} : args[0]);
 							});
 						}
 						else use_engine = use_engine.script(args[i]);
@@ -253,7 +252,7 @@
 				else {
 					queueAndExecute(function(){
 						for (var i=0; i<args.length; i++) {
-							loadScript((typeof args[i] === sOBJECT) ? args[i] : {src:args[i]});
+							loadScript((typeof args[i] === sSTRING) ? {src:args[i]} : args[i]);
 						}
 					});
 				}
@@ -273,6 +272,7 @@
 					else fSETTIMEOUT(wfunc,0);
 				};
 				
+
 				if (queueExec && !scripts_loading) onlyQueue(fn)
 				else queueAndExecute(fn);
 				return e;
