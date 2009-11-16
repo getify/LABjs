@@ -1,5 +1,5 @@
 // LAB.js (LABjs :: Loading And Blocking JavaScript)
-// v1.0rc2c (c) Kyle Simpson
+// v1.0rc3 (c) Kyle Simpson
 // MIT License
 
 (function(global){
@@ -176,6 +176,7 @@
 				xhr = scriptentry.xhr = (oACTIVEX ? new oACTIVEX("Microsoft.XMLHTTP") : new global.XMLHttpRequest());
 				scriptentry[sXHRPOLL] = fSETINTERVAL(function() { handleXHRPreload(xhr,scriptentry); },13);
 				xhr.open("GET",src);
+
 				xhr.send("");
 			}
 			else if (!first_pass && !scriptentry[sPRELOADDONE]) {	// preload XHR still in progress, make sure trigger is set for execution later
@@ -272,6 +273,7 @@
 					else fSETTIMEOUT(wfunc,0);
 				};
 				
+
 
 				if (queueExec && !scripts_loading) onlyQueue(fn)
 				else queueAndExecute(fn);
