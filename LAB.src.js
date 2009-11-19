@@ -1,5 +1,5 @@
 // LAB.js (LABjs :: Loading And Blocking JavaScript)
-// v1.0rc4b (c) Kyle Simpson
+// v1.0rc5 (c) Kyle Simpson
 // MIT License
 
 (function(global){
@@ -333,5 +333,14 @@
 	   For instance, jQuery > 1.3.2 has been patched to take advantage of document.readyState, which is enabled by this hack. But 1.3.2 and before are **not** safe or 
 	   affected by this hack, and should therefore **not** be lazy-loaded by script loader tools such as LABjs.
 	*/ 
-	(function(a,b,c,d){if(a[b]==null&&a[c]){a[c](d,function(){a.removeEventListener(d,arguments.callee,false);a[b]=sCOMPLETE},false);a[b]="loading"}})(document,"readyState","addEventListener","DOMContentLoaded");
+	(function(addEvent,domLoaded,handler){
+		if (oDOC[sREADYSTATE]==null && oDOC[addEvent]){
+			handler = function(){
+				oDOC.removeEventListener(domLoaded,handler,bFALSE);
+				oDOC[sREADYSTATE] = sCOMPLETE;
+			};
+			oDOC[addEvent](domLoaded,handler,bFALSE);
+			oDOC[sREADYSTATE] = "loading";
+		}
+	})("addEventListener","DOMContentLoaded");
 })(window);
