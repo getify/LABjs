@@ -10,7 +10,6 @@
 		sFUNCTION = "function",
 		sSCRIPT = "script",
 		sREADYSTATE = "readyState",
-		sXHRPOLL = "xhrpoll",
 		sPRELOADDONE = "preloaddone",
 		sLOADTRIGGER = "loadtrigger",
 		sSRCURI = "srcuri",
@@ -18,6 +17,7 @@
 		sCOMPLETE = "complete",
 		sDONE = "done",
 		sWHICH = "which",
+		sONREADYSTATECHANGE = "onreadystatechange",
 		sHASOWNPROPERTY = "hasOwnProperty",
 		bTRUE = true,
 		bFALSE = false,
@@ -25,8 +25,6 @@
 		oDOCLOC = oDOC.location,
 		oACTIVEX = global.ActiveXObject,
 		fSETTIMEOUT = global.setTimeout,
-		fSETINTERVAL = global.setInterval,
-		fCLEARINTERVAL = global.clearInterval,
 		fGETELEMENTSBYTAGNAME = function(tn){return oDOC.getElementsByTagName(tn);},
 		fOBJTOSTRING = Object.prototype.toString,
 		fNOOP = function(){},
@@ -127,9 +125,8 @@
 			},0);
 		}
 		function handleXHRPreload(xhr,scriptentry) {
-			if (xhr[sREADYSTATE] === 0) fCLEARINTERVAL(scriptentry[sXHRPOLL]); // necessary? verify against jquery source
 			if (xhr[sREADYSTATE] === 4) {
-				fCLEARINTERVAL(scriptentry[sXHRPOLL]);
+				xhr[sONREADYSTATECHANGE] = fNOOP; // fix a memory leak in IE
 				scriptentry[sPRELOADDONE] = bTRUE;
 				fSETTIMEOUT(function(){ loadTriggerExecute(scriptentry); },0);
 			}
@@ -177,7 +174,7 @@
 			if (first_pass && typeof scriptentry[sPRELOADDONE] === sUNDEF) { // need to preload
 				scriptentry[sPRELOADDONE] = bFALSE;
 				xhr = scriptentry.xhr = (oACTIVEX ? new oACTIVEX("Microsoft.XMLHTTP") : new global.XMLHttpRequest());
-				scriptentry[sXHRPOLL] = fSETINTERVAL(function() { handleXHRPreload(xhr,scriptentry); },13);
+				xhr[sONREADYSTATECHANGE] = function(){handleXHRPreload(xhr,scriptentry);};
 				xhr.open("GET",src);
 				xhr.send("");
 			}
