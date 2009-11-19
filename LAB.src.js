@@ -200,9 +200,7 @@
 						
 			if (!allowDup && 
 				(
-					(typeof all_scripts[src_uri] !== sUNDEF && all_scripts[src_uri] !== null) || 
-					(first_pass && scripts[src_uri]) ||
-					scriptTagExists(src_uri)
+					(all_scripts[src_uri] != null) || (first_pass && scripts[src_uri]) || scriptTagExists(src_uri)
 				)
 			) {
 				if (typeof scripts[src_uri] !== sUNDEF && scripts[src_uri][sPRELOADDONE] && !scripts[src_uri][sDONE] && same_domain) {
