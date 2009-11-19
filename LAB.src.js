@@ -1,5 +1,5 @@
 // LAB.js (LABjs :: Loading And Blocking JavaScript)
-// v1.0rc4 (c) Kyle Simpson
+// v1.0rc4b (c) Kyle Simpson
 // MIT License
 
 (function(global){
@@ -15,8 +15,10 @@
 		sLOADTRIGGER = "loadtrigger",
 		sSRCURI = "srcuri",
 		sPRELOAD = "preload",
+		sCOMPLETE = "complete",
 		sDONE = "done",
 		sWHICH = "which",
+		sHASOWNPROPERTY = "hasOwnProperty",
 		bTRUE = true,
 		bFALSE = false,
 		oDOC = global.document,
@@ -43,25 +45,26 @@
 		is_gecko = (function(o) { o[o] = o+""; return o[o] != o+""; })(new String("__count__")),
 
 		global_defs = {
-			preload:bTRUE, // use various tricks for "preloading" scripts
 			cache:!(is_gecko||is_opera), // browsers like IE/Safari/Chrome can use the "cache" trick to preload
 			order:is_gecko||is_opera, // FF/Opera preserve execution order with script tags automatically, so just add all scripts as fast as possible
 			xhr:bTRUE, // use XHR trick to preload local scripts
-			dupe:bFALSE, // allow duplicate scripts?
+			dupe:bTRUE, // allow duplicate scripts? defaults to true now 'cause is slightly more performant that way (less checks)
 			preserve:bFALSE, // preserve execution order of all loaded scripts (regardless of preloading)
 			base:"", // base path to prepend to all non-absolute-path scripts
 			which:sHEAD // which DOM object ("head" or "body") to append scripts to
 		}
 	;
+	global_defs[sPRELOAD] = bTRUE; // use various tricks for "preloading" scripts
 	
 	append_to[sHEAD] = fGETELEMENTSBYTAGNAME(sHEAD);
 	append_to[sBODY] = fGETELEMENTSBYTAGNAME(sBODY);
 	
 	function canonicalScriptURI(src,base_path) {
+		var regex = /^\w+\:\/\//, ret; 
 		if (typeof src !== sSTRING) src = "";
 		if (typeof base_path !== sSTRING) base_path = "";
-		var ret = (/^\w+\:\/\//.test(src) ? "" : base_path) + src;
-		return ((/^\w+\:\/\//.test(ret) ? "" : (ret.charAt(0) === "/" ? DOCROOT : PAGEROOT)) + ret);
+		ret = (regex.test(src) ? "" : base_path) + src;
+		return ((regex.test(ret) ? "" : (ret.charAt(0) === "/" ? DOCROOT : PAGEROOT)) + ret);
 	}
 	function sameDomain(src) { return (canonicalScriptURI(src).indexOf(DOCROOT) === 0); }
 	function scriptTagExists(uri) { // checks if a script uri has ever been loaded into this page's DOM
@@ -76,7 +79,7 @@
 		if (typeof opts === sUNDEF) opts = global_defs;
 		
 		var ready = bFALSE,
-			_use_preload = queueExec && opts.preload,
+			_use_preload = queueExec && opts[sPRELOAD],
 			_use_cache_preload = _use_preload && opts.cache,
 			_use_script_order = _use_preload && opts.order,
 			_use_xhr_preload = _use_preload && opts.xhr,
@@ -94,7 +97,7 @@
 		_use_preload = _use_cache_preload || _use_xhr_preload || _use_script_order; // if all flags are turned off, preload is moot so disable it
 		
 		function isScriptLoaded(elem,scriptentry) {
-			if ((elem[sREADYSTATE] && elem[sREADYSTATE]!=="complete" && elem[sREADYSTATE]!=="loaded") || scriptentry[sDONE]) { return bFALSE; }
+			if ((elem[sREADYSTATE] && elem[sREADYSTATE]!==sCOMPLETE && elem[sREADYSTATE]!=="loaded") || scriptentry[sDONE]) { return bFALSE; }
 			elem.onload = elem.onreadystatechange = null; // prevent memory leak
 			return bTRUE;
 		}
@@ -104,7 +107,7 @@
 			scriptentry[sDONE] = bTRUE;
 
 			for (var key in scripts) {
-				if (scripts.hasOwnProperty(key) && !(scripts[key][sDONE])) return;
+				if (scripts[sHASOWNPROPERTY](key) && !(scripts[key][sDONE])) return;
 			}
 			ready = bTRUE;
 			waitFunc();
@@ -176,8 +179,6 @@
 				xhr = scriptentry.xhr = (oACTIVEX ? new oACTIVEX("Microsoft.XMLHTTP") : new global.XMLHttpRequest());
 				scriptentry[sXHRPOLL] = fSETINTERVAL(function() { handleXHRPreload(xhr,scriptentry); },13);
 				xhr.open("GET",src);
-
-
 				xhr.send("");
 			}
 			else if (!first_pass && !scriptentry[sPRELOADDONE]) {	// preload XHR still in progress, make sure trigger is set for execution later
@@ -273,8 +274,6 @@
 					if (scripts_loading && !ready) waitFunc = wfunc;
 					else fSETTIMEOUT(wfunc,0);
 				};
-				
-
 
 				if (queueExec && !scripts_loading) onlyQueue(fn)
 				else queueAndExecute(fn);
@@ -295,18 +294,18 @@
 	}
 	function processOpts(opts) {
 		var k, newOpts = {}, 
-			boolOpts = {"UseCachePreload":"cache","UseLocalXHR":"xhr","UsePreloading":"preload","AlwaysPreserveOrder":"preserve","AllowDuplicates":"dupe"},
+			boolOpts = {"UseCachePreload":"cache","UseLocalXHR":"xhr","UsePreloading":sPRELOAD,"AlwaysPreserveOrder":"preserve","AllowDuplicates":"dupe"},
 			allOpts = {"AppendTo":"which","BasePath":"base"}
 		;
 		for (k in boolOpts) allOpts[k] = boolOpts[k];
 		newOpts.order = !(!global_defs.order);
 		for (k in allOpts) {
-			if (allOpts.hasOwnProperty(k) && typeof global_defs[allOpts[k]] !== sUNDEF) newOpts[allOpts[k]] = (typeof opts[k] !== sUNDEF) ? opts[k] : global_defs[allOpts[k]];
+			if (allOpts[sHASOWNPROPERTY](k) && typeof global_defs[allOpts[k]] !== sUNDEF) newOpts[allOpts[k]] = (typeof opts[k] !== sUNDEF) ? opts[k] : global_defs[allOpts[k]];
 		}
 		for (k in boolOpts) { // normalize bool props to actual boolean values if not already
-			if (boolOpts.hasOwnProperty(k)) newOpts[boolOpts[k]] = !(!newOpts[boolOpts[k]]);
+			if (boolOpts[sHASOWNPROPERTY](k)) newOpts[boolOpts[k]] = !(!newOpts[boolOpts[k]]);
 		}
-		if (!newOpts.preload) newOpts.cache = newOpts.order = newOpts.xhr = bFALSE; // turn off all flags if preloading is disabled
+		if (!newOpts[sPRELOAD]) newOpts.cache = newOpts.order = newOpts.xhr = bFALSE; // turn off all flags if preloading is disabled
 		newOpts.which = (newOpts.which === sHEAD || newOpts.which === sBODY) ? newOpts.which : sHEAD;
 		return newOpts;
 	}
@@ -336,5 +335,5 @@
 	   For instance, jQuery > 1.3.2 has been patched to take advantage of document.readyState, which is enabled by this hack. But 1.3.2 and before are **not** safe or 
 	   affected by this hack, and should therefore **not** be lazy-loaded by script loader tools such as LABjs.
 	*/ 
-	(function(a,b,c,d){if(a[b]==null&&a[c]){a[c](d,function(){a.removeEventListener(d,arguments.callee,false);a[b]="complete"},false);a[b]="loading"}})(document,"readyState","addEventListener","DOMContentLoaded");
+	(function(a,b,c,d){if(a[b]==null&&a[c]){a[c](d,function(){a.removeEventListener(d,arguments.callee,false);a[b]=sCOMPLETE},false);a[b]="loading"}})(document,"readyState","addEventListener","DOMContentLoaded");
 })(window);
