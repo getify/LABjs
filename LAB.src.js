@@ -1,5 +1,5 @@
 // LAB.js (LABjs :: Loading And Blocking JavaScript)
-// v1.0rc5b (c) Kyle Simpson
+// v1.0rc5c (c) Kyle Simpson
 // MIT License
 
 (function(global){
@@ -333,12 +333,12 @@
 	*/ 
 	(function(addEvent,domLoaded,handler){
 		if (oDOC[sREADYSTATE] == nNULL && oDOC[addEvent]){
-			handler = function(){
+			oDOC[sREADYSTATE] = "loading";
+			oDOC[addEvent](domLoaded,handler = function(){
 				oDOC.removeEventListener(domLoaded,handler,bFALSE);
 				oDOC[sREADYSTATE] = sCOMPLETE;
-			};
-			oDOC[addEvent](domLoaded,handler,bFALSE);
-			oDOC[sREADYSTATE] = "loading";
+			},bFALSE);
 		}
 	})("addEventListener","DOMContentLoaded");
+	
 })(window);
