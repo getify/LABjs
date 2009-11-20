@@ -1,13 +1,11 @@
 // LAB.js (LABjs :: Loading And Blocking JavaScript)
-// v1.0rc5 (c) Kyle Simpson
+// v1.0rc5b (c) Kyle Simpson
 // MIT License
 
 (function(global){
-	var sUNDEF = "undefined",				// constants used for compression optimization
-		sSTRING = "string",
+	var sSTRING = "string",				// constants used for compression optimization
 		sHEAD = "head",
 		sBODY = "body",
-		sFUNCTION = "function",
 		sSCRIPT = "script",
 		sREADYSTATE = "readyState",
 		sPRELOADDONE = "preloaddone",
@@ -18,7 +16,9 @@
 		sDONE = "done",
 		sWHICH = "which",
 		sONREADYSTATECHANGE = "onreadystatechange",
+		sONLOAD = "onload",
 		sHASOWNPROPERTY = "hasOwnProperty",
+		nNULL = null,
 		bTRUE = true,
 		bFALSE = false,
 		oDOC = global.document,
@@ -57,6 +57,7 @@
 	append_to[sHEAD] = fGETELEMENTSBYTAGNAME(sHEAD);
 	append_to[sBODY] = fGETELEMENTSBYTAGNAME(sBODY);
 	
+	function isFunc(func) { return fOBJTOSTRING.call(func) === "[object Function]"; }
 	function canonicalScriptURI(src,base_path) {
 		var regex = /^\w+\:\/\//, ret; 
 		if (typeof src !== sSTRING) src = "";
@@ -74,7 +75,7 @@
 	}
 	function engine(queueExec,opts) {
 		queueExec = !(!queueExec);
-		if (typeof opts === sUNDEF) opts = global_defs;
+		if (opts == nNULL) opts = global_defs;
 		
 		var ready = bFALSE,
 			_use_preload = queueExec && opts[sPRELOAD],
@@ -96,7 +97,7 @@
 		
 		function isScriptLoaded(elem,scriptentry) {
 			if ((elem[sREADYSTATE] && elem[sREADYSTATE]!==sCOMPLETE && elem[sREADYSTATE]!=="loaded") || scriptentry[sDONE]) { return bFALSE; }
-			elem.onload = elem.onreadystatechange = null; // prevent memory leak
+			elem[sONLOAD] = elem[sONREADYSTATECHANGE] = nNULL; // prevent memory leak
 			return bTRUE;
 		}
 		function handleScriptLoad(elem,scriptentry,skipReadyCheck) {
@@ -111,9 +112,9 @@
 			waitFunc();
 		}
 		function loadTriggerExecute(scriptentry) {
-			if (typeof scriptentry[sLOADTRIGGER] === sFUNCTION) {
+			if (isFunc(scriptentry[sLOADTRIGGER])) {
 				scriptentry[sLOADTRIGGER]();
-				scriptentry[sLOADTRIGGER] = null; // prevent memory leak
+				scriptentry[sLOADTRIGGER] = nNULL; // prevent memory leak
 			}
 		}
 		function handleScriptPreload(elem,scriptentry) {
@@ -133,7 +134,7 @@
 		}
 		function createScriptTag(scriptentry,src,type,charset,rel,onload,scriptText) {
 			fSETTIMEOUT(function(){
-				if (append_to[scriptentry[sWHICH]][0] === null) { // append_to object not yet ready
+				if (append_to[scriptentry[sWHICH]][0] === nNULL) { // append_to object not yet ready
 					fSETTIMEOUT(arguments.callee,25); 
 					return;
 				}
@@ -141,8 +142,8 @@
 				fSETATTRIBUTE("type",type);
 				fSETATTRIBUTE("rel",rel);
 				if (typeof charset === sSTRING) fSETATTRIBUTE("charset",charset);
-				if (typeof onload === sFUNCTION) { // load script via 'src' attribute, set onload/onreadystatechange listeners
-					scriptElem.onload = scriptElem.onreadystatechange = function(){onload(scriptElem,scriptentry);};
+				if (isFunc(onload)) { // load script via 'src' attribute, set onload/onreadystatechange listeners
+					scriptElem[sONLOAD] = scriptElem[sONREADYSTATECHANGE] = function(){onload(scriptElem,scriptentry);};
 					fSETATTRIBUTE("src",src);
 				}
 				append_to[scriptentry[sWHICH]][0].appendChild(scriptElem);
@@ -158,57 +159,57 @@
 		}
 		function loadScriptCache(scriptentry,src,type,charset) {
 			var args = arguments;
-			if (first_pass && typeof scriptentry[sPRELOADDONE] === sUNDEF) { // need to preload into cache
+			if (first_pass && scriptentry[sPRELOADDONE] == nNULL) { // need to preload into cache
 				scriptentry[sPRELOADDONE] = bFALSE;
 				createScriptTag(scriptentry,src,"text/html",charset,sPRELOAD,handleScriptPreload); // "text/html" causes a fetch into cache, but no execution
 			}
-			else if (!first_pass && !scriptentry[sPRELOADDONE]) { // preload still in progress, make sure trigger is set for execution later
-				scriptentry[sLOADTRIGGER] = function(){loadScriptCache.apply(null,args);};
+			else if (!first_pass && scriptentry[sPRELOADDONE] != nNULL && !scriptentry[sPRELOADDONE]) { // preload still in progress, make sure trigger is set for execution later
+				scriptentry[sLOADTRIGGER] = function(){loadScriptCache.apply(nNULL,args);};
 			}
 			else if (!first_pass) { // preload done, so reload (from cache, hopefully!) as regular script element
-				loadScriptElem.apply(null,args);
+				loadScriptElem.apply(nNULL,args);
 			}
 		}
 		function loadScriptXHR(scriptentry,src,type,charset) {
 			var args = arguments, xhr;
-			if (first_pass && typeof scriptentry[sPRELOADDONE] === sUNDEF) { // need to preload
+			if (first_pass && scriptentry[sPRELOADDONE] == nNULL) { // need to preload
 				scriptentry[sPRELOADDONE] = bFALSE;
 				xhr = scriptentry.xhr = (oACTIVEX ? new oACTIVEX("Microsoft.XMLHTTP") : new global.XMLHttpRequest());
 				xhr[sONREADYSTATECHANGE] = function(){handleXHRPreload(xhr,scriptentry);};
 				xhr.open("GET",src);
 				xhr.send("");
 			}
-			else if (!first_pass && !scriptentry[sPRELOADDONE]) {	// preload XHR still in progress, make sure trigger is set for execution later
-				scriptentry[sLOADTRIGGER] = function(){loadScriptXHR.apply(null,args);};
+			else if (!first_pass && scriptentry[sPRELOADDONE] != nNULL && !scriptentry[sPRELOADDONE]) {	// preload XHR still in progress, make sure trigger is set for execution later
+				scriptentry[sLOADTRIGGER] = function(){loadScriptXHR.apply(nNULL,args);};
 			}
 			else if (!first_pass) { // preload done, so "execute" script via injection
 				all_scripts[scriptentry[sSRCURI]] = bTRUE;
-				createScriptTag(scriptentry,src,type,charset,"",null,scriptentry.xhr.responseText);
-				scriptentry.xhr = null;
+				createScriptTag(scriptentry,src,type,charset,"",nNULL,scriptentry.xhr.responseText);
+				scriptentry.xhr = nNULL;
 			}
 		}
 		function loadScript(o) {
-			if (typeof o.allowDup === sUNDEF) o.allowDup = opts.dupe;
+			if (o.allowDup == nNULL) o.allowDup = opts.dupe;
 			var src = o.src, type = o.type, charset = o.charset, allowDup = o.allowDup, 
 				src_uri = canonicalScriptURI(src,_base_path), scriptentry, same_domain = sameDomain(src_uri);
 			if (typeof type !== sSTRING) type = "text/javascript";
-			if (typeof charset !== sSTRING) charset = null;
+			if (typeof charset !== sSTRING) charset = nNULL;
 			allowDup = !(!allowDup);
 						
 			if (!allowDup && 
 				(
-					(all_scripts[src_uri] != null) || (first_pass && scripts[src_uri]) || scriptTagExists(src_uri)
+					(all_scripts[src_uri] != nNULL) || (first_pass && scripts[src_uri]) || scriptTagExists(src_uri)
 				)
 			) {
-				if (typeof scripts[src_uri] !== sUNDEF && scripts[src_uri][sPRELOADDONE] && !scripts[src_uri][sDONE] && same_domain) {
+				if (scripts[src_uri] != nNULL && scripts[src_uri][sPRELOADDONE] && !scripts[src_uri][sDONE] && same_domain) {
 					// this script was preloaded via XHR, but is a duplicate, and dupes are not allowed
-					handleScriptLoad(null,scripts[src_uri],bTRUE); // mark the entry as done and check if chain group is done
+					handleScriptLoad(nNULL,scripts[src_uri],bTRUE); // mark the entry as done and check if chain group is done
 				}
 				return;
 			}
-			if (typeof scripts[src_uri] === sUNDEF) scripts[src_uri] = {};
+			if (scripts[src_uri] == nNULL) scripts[src_uri] = {};
 			scriptentry = scripts[src_uri];
-			if (typeof scriptentry[sWHICH] === sUNDEF) scriptentry[sWHICH] = _which;
+			if (scriptentry[sWHICH] == nNULL) scriptentry[sWHICH] = _which;
 			scriptentry[sDONE] = bFALSE;
 			scriptentry[sSRCURI] = src_uri;
 			scripts_loading = bTRUE;
@@ -258,7 +259,7 @@
 			},
 			wait:function(func) {
 				first_pass = false;
-				if (typeof func !== sFUNCTION) func = fNOOP;
+				if (!isFunc(func)) func = fNOOP;
 				// On this current chain's waitFunc function, tack on call to trigger the queue for the *next* engine 
 				// in the chain, which will be executed when the current chain finishes loading
 				var e = engine(bTRUE,opts),	// 'bTRUE' tells the engine to be in queueing mode
@@ -295,7 +296,7 @@
 		for (k in boolOpts) allOpts[k] = boolOpts[k];
 		newOpts.order = !(!global_defs.order);
 		for (k in allOpts) {
-			if (allOpts[sHASOWNPROPERTY](k) && typeof global_defs[allOpts[k]] !== sUNDEF) newOpts[allOpts[k]] = (typeof opts[k] !== sUNDEF) ? opts[k] : global_defs[allOpts[k]];
+			if (allOpts[sHASOWNPROPERTY](k) && global_defs[allOpts[k]] != nNULL) newOpts[allOpts[k]] = (opts[k] != nNULL) ? opts[k] : global_defs[allOpts[k]];
 		}
 		for (k in boolOpts) { // normalize bool props to actual boolean values if not already
 			if (boolOpts[sHASOWNPROPERTY](k)) newOpts[boolOpts[k]] = !(!newOpts[boolOpts[k]]);
@@ -313,10 +314,10 @@
 			return engine(bFALSE,processOpts(opts));
 		},
 		script:function(){ // will load one or more scripts
-			return engine().script.apply(null,arguments);
+			return engine().script.apply(nNULL,arguments);
 		},
 		wait:function(){ // will ensure that the chain's previous scripts are executed before execution of scripts in subsequent chain links
-			return engine().wait.apply(null,arguments);
+			return engine().wait.apply(nNULL,arguments);
 		}
 	};
 	global.$LAB.block = global.$LAB.wait;	// alias "block" to "wait" -- "block" is now deprecated
@@ -331,7 +332,7 @@
 	   affected by this hack, and should therefore **not** be lazy-loaded by script loader tools such as LABjs.
 	*/ 
 	(function(addEvent,domLoaded,handler){
-		if (oDOC[sREADYSTATE]==null && oDOC[addEvent]){
+		if (oDOC[sREADYSTATE] == nNULL && oDOC[addEvent]){
 			handler = function(){
 				oDOC.removeEventListener(domLoaded,handler,bFALSE);
 				oDOC[sREADYSTATE] = sCOMPLETE;
