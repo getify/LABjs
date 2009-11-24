@@ -1,5 +1,5 @@
 // LAB.js (LABjs :: Loading And Blocking JavaScript)
-// v1.0 (c) Kyle Simpson
+// v1.0.1 (c) Kyle Simpson
 // MIT License
 
 (function(global){
@@ -25,6 +25,7 @@
 		oDOCLOC = oDOC.location,
 		oACTIVEX = global.ActiveXObject,
 		fSETTIMEOUT = global.setTimeout,
+		fCLEARTIMEOUT = global.clearTimeout,
 		fGETELEMENTSBYTAGNAME = function(tn){return oDOC.getElementsByTagName(tn);},
 		fOBJTOSTRING = Object.prototype.toString,
 		fNOOP = function(){},
@@ -90,7 +91,8 @@
 			publicAPI,
 			first_pass = bTRUE,
 			scripts = {},
-			exec = []
+			exec = [],
+			end_of_chain_check_interval = null
 		;
 		
 		_use_preload = _use_cache_preload || _use_xhr_preload || _use_script_order; // if all flags are turned off, preload is moot so disable it
@@ -195,7 +197,6 @@
 			if (typeof type !== sSTRING) type = "text/javascript";
 			if (typeof charset !== sSTRING) charset = nNULL;
 			allowDup = !(!allowDup);
-						
 			if (!allowDup && 
 				(
 					(all_scripts[src_uri] != nNULL) || (first_pass && scripts[src_uri]) || scriptTagExists(src_uri)
@@ -236,6 +237,7 @@
 				
 		publicAPI = {
 			script:function() {
+				fCLEARTIMEOUT(end_of_chain_check_interval);
 				var args = serializeArgs(arguments), use_engine = publicAPI;
 				if (_auto_wait) {
 					for (var i=0; i<args.length; i++) {
@@ -255,10 +257,12 @@
 						}
 					});
 				}
+				end_of_chain_check_interval = fSETTIMEOUT(function(){first_pass = bFALSE;},5); // hack to "detect" the end of the chain if a wait() is not the last call
 				return use_engine;
 			},
 			wait:function(func) {
-				first_pass = false;
+				fCLEARTIMEOUT(end_of_chain_check_interval);
+				first_pass = bFALSE;
 				if (!isFunc(func)) func = fNOOP;
 				// On this current chain's waitFunc function, tack on call to trigger the queue for the *next* engine 
 				// in the chain, which will be executed when the current chain finishes loading
