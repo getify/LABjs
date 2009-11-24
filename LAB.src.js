@@ -1,5 +1,5 @@
 // LAB.js (LABjs :: Loading And Blocking JavaScript)
-// v1.0rc5c (c) Kyle Simpson
+// v1.0 (c) Kyle Simpson
 // MIT License
 
 (function(global){
