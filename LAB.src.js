@@ -1,5 +1,5 @@
 // LAB.js (LABjs :: Loading And Blocking JavaScript)
-// v1.0.1 (c) Kyle Simpson
+// v1.0.2a (c) Kyle Simpson
 // MIT License
 
 (function(global){
@@ -89,6 +89,8 @@
 			waitFunc = fNOOP,
 			scripts_loading = bFALSE,
 			publicAPI,
+
+
 			first_pass = bTRUE,
 			scripts = {},
 			exec = [],
@@ -163,7 +165,7 @@
 			var args = arguments;
 			if (first_pass && scriptentry[sPRELOADDONE] == nNULL) { // need to preload into cache
 				scriptentry[sPRELOADDONE] = bFALSE;
-				createScriptTag(scriptentry,src,"text/html",charset,sPRELOAD,handleScriptPreload); // "text/html" causes a fetch into cache, but no execution
+				createScriptTag(scriptentry,src,"script/cache",charset,sPRELOAD,handleScriptPreload); // fake mimetype causes a fetch into cache, but no execution
 			}
 			else if (!first_pass && scriptentry[sPRELOADDONE] != nNULL && !scriptentry[sPRELOADDONE]) { // preload still in progress, make sure trigger is set for execution later
 				scriptentry[sLOADTRIGGER] = function(){loadScriptCache.apply(nNULL,args);};
