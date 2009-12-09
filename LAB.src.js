@@ -39,7 +39,6 @@
 		PAGEROOT = /^[^?#]*\//.exec(oWINLOC.href)[0], // these ROOTs do not support file:/// usage, only http:// type usage
 		DOCROOT = /^\w+\:\/\/\/?[^\/]+/.exec(PAGEROOT)[0], // optional third / in the protocol portion of this regex so that LABjs doesn't blow up when used in file:/// usage
 		docScripts = fGETELEMENTSBYTAGNAME(sSCRIPT),
-		idx, // reusable iterator variable
 
 		// Ah-ha hush that fuss, feature inference is used to detect specific browsers
 		// because the techniques used in LABjs have no known feature detection. If
@@ -74,8 +73,7 @@
 	}
 	function sameDomain(src) { return (canonicalScriptURI(src).indexOf(DOCROOT) === 0); }
 	function scriptTagExists(uri) { // checks if a script uri has ever been loaded into this page's DOM
-		var script;
-		idx=-1;
+		var script, idx=-1;
 		while (script = docScripts[++idx]) {
 			if (typeof script.src === sSTRING && uri === canonicalScriptURI(script.src) && script.type !== sSCRIPTCACHE) return bTRUE;
 		}
@@ -234,7 +232,7 @@
 			if (!queueExec || _use_preload) execBody(); // if engine is either not queueing, or is queuing in preload mode, go ahead and execute
 		}
 		function serializeArgs(args) {
-			var sargs = [];
+			var sargs = [], idx;
 			for (idx=-1; ++idx<args.length;) {
 				if (fOBJTOSTRING.call(args[idx]) === sTYPEARRAY) sargs = sargs.concat(serializeArgs(args[idx]));
 				else sargs[sargs.length] = args[idx];
@@ -245,7 +243,7 @@
 		publicAPI = {
 			script:function() {
 				fCLEARTIMEOUT(end_of_chain_check_interval);
-				var args = serializeArgs(arguments), use_engine = publicAPI;
+				var args = serializeArgs(arguments), use_engine = publicAPI, idx;
 				if (_auto_wait) {
 					for (idx=-1; ++idx<args.length;) {
 						if (idx===0) {
@@ -292,8 +290,7 @@
 			// if queueing, return a function that the previous chain's waitFunc function can use to trigger this 
 			// engine's queue. NOTE: this trigger function is captured and removed from the public chain API before return
 			publicAPI.trigger = function() {
-				var fn; 
-				idx=-1;
+				var fn, idx=-1;
 				while (fn = exec[++idx]) fn();
 				exec = []; 
 			};
