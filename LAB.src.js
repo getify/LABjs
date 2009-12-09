@@ -1,5 +1,5 @@
 // LAB.js (LABjs :: Loading And Blocking JavaScript)
-// v1.0.2a (c) Kyle Simpson
+// v1.0.2b (c) Kyle Simpson
 // MIT License
 
 (function(global){
@@ -91,10 +91,12 @@
 			publicAPI,
 
 
+
+
 			first_pass = bTRUE,
 			scripts = {},
 			exec = [],
-			end_of_chain_check_interval = null
+			end_of_chain_check_interval = nNULL
 		;
 		
 		_use_preload = _use_cache_preload || _use_xhr_preload || _use_script_order; // if all flags are turned off, preload is moot so disable it
