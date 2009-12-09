@@ -1,5 +1,5 @@
 // LAB.js (LABjs :: Loading And Blocking JavaScript)
-// v1.0.2b (c) Kyle Simpson
+// v1.0.2c (c) Kyle Simpson
 // MIT License
 
 (function(global){
@@ -277,7 +277,7 @@
 				delete e.trigger; // remove the 'trigger' property from e's public API, since only used internally
 				var fn = function(){
 					if (scripts_loading && !ready) waitFunc = wfunc;
-					else fSETTIMEOUT(wfunc,0);
+					else wfunc();
 				};
 
 				if (queueExec && !scripts_loading) onlyQueue(fn);
