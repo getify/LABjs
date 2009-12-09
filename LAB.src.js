@@ -19,6 +19,9 @@
 		sONREADYSTATECHANGE = "onreadystatechange",
 		sONLOAD = "onload",
 		sHASOWNPROPERTY = "hasOwnProperty",
+		sTYPEOBJ = "[object ",
+		sTYPEFUNC = sTYEPOBJ+"Function]",
+		sTYPEARRAY = sTYPEOBJ+"Array]",
 		nNULL = null,
 		bTRUE = true,
 		bFALSE = false,
@@ -41,7 +44,7 @@
 		// you know of a feature test please contact me ASAP. Feature inference is used
 		// instead of user agent sniffing because the UA string can be easily
 		// spoofed and is not adequate for such a mission critical part of the code.
-		is_opera = global.opera && fOBJTOSTRING.call(global.opera) == "[object Opera]",
+		is_opera = global.opera && fOBJTOSTRING.call(global.opera) == sTYPEOBJ+"Opera]",
 		is_gecko = (function(o) { o[o] = o+""; return o[o] != o+""; })(new String("__count__")),
 
 		global_defs = {
@@ -59,7 +62,7 @@
 	append_to[sHEAD] = fGETELEMENTSBYTAGNAME(sHEAD);
 	append_to[sBODY] = fGETELEMENTSBYTAGNAME(sBODY);
 	
-	function isFunc(func) { return fOBJTOSTRING.call(func) === "[object Function]"; }
+	function isFunc(func) { return fOBJTOSTRING.call(func) === sTYPEFUNC; }
 	function canonicalScriptURI(src,base_path) {
 		var regex = /^\w+\:\/\//, ret; 
 		if (typeof src !== sSTRING) src = "";
@@ -231,7 +234,7 @@
 		function serializeArgs(args) {
 			var sargs = [], i;
 			for (i=0; i<args.length; i++) {
-				if (fOBJTOSTRING.call(args[i]) === "[object Array]") sargs = sargs.concat(serializeArgs(args[i]));
+				if (fOBJTOSTRING.call(args[i]) === sTYPEARRAY) sargs = sargs.concat(serializeArgs(args[i]));
 				else sargs[sargs.length] = args[i];
 			}
 			return sargs;
