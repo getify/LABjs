@@ -19,6 +19,7 @@
 		sONREADYSTATECHANGE = "onreadystatechange",
 		sONLOAD = "onload",
 		sHASOWNPROPERTY = "hasOwnProperty",
+		sSCRIPTCACHE = "script/cache",
 		sTYPEOBJ = "[object ",
 		sTYPEFUNC = sTYPEOBJ+"Function]",
 		sTYPEARRAY = sTYPEOBJ+"Array]",
@@ -76,7 +77,7 @@
 		var script;
 		idx=-1;
 		while (script = docScripts[++idx]) {
-			if (typeof script.src === sSTRING && uri === canonicalScriptURI(script.src) && script.getAttribute("rel") !== sPRELOAD) return bTRUE;
+			if (typeof script.src === sSTRING && uri === canonicalScriptURI(script.src) && script.type !== sSCRIPTCACHE) return bTRUE;
 		}
 		return bFALSE;
 	}
@@ -141,7 +142,7 @@
 				fSETTIMEOUT(function(){ loadTriggerExecute(scriptentry); },0);
 			}
 		}
-		function createScriptTag(scriptentry,src,type,charset,rel,onload,scriptText) {
+		function createScriptTag(scriptentry,src,type,charset,onload,scriptText) {
 			fSETTIMEOUT(function(){
 				if (append_to[scriptentry[sWHICH]][0] === nNULL) { // append_to object not yet ready
 					fSETTIMEOUT(arguments.callee,25); 
@@ -149,7 +150,6 @@
 				}
 				var scriptElem = oDOC.createElement(sSCRIPT), fSETATTRIBUTE = function(attr,val){scriptElem.setAttribute(attr,val);};
 				fSETATTRIBUTE("type",type);
-				fSETATTRIBUTE("rel",rel);
 				if (typeof charset === sSTRING) fSETATTRIBUTE("charset",charset);
 				if (isFunc(onload)) { // load script via 'src' attribute, set onload/onreadystatechange listeners
 					scriptElem[sONLOAD] = scriptElem[sONREADYSTATECHANGE] = function(){onload(scriptElem,scriptentry);};
@@ -164,13 +164,13 @@
 		}
 		function loadScriptElem(scriptentry,src,type,charset) {
 			all_scripts[scriptentry[sSRCURI]] = bTRUE;
-			createScriptTag(scriptentry,src,type,charset,"",handleScriptLoad);
+			createScriptTag(scriptentry,src,type,charset,handleScriptLoad);
 		}
 		function loadScriptCache(scriptentry,src,type,charset) {
 			var args = arguments;
 			if (first_pass && scriptentry[sPRELOADDONE] == nNULL) { // need to preload into cache
 				scriptentry[sPRELOADDONE] = bFALSE;
-				createScriptTag(scriptentry,src,"script/cache",charset,sPRELOAD,handleScriptPreload); // fake mimetype causes a fetch into cache, but no execution
+				createScriptTag(scriptentry,src,sSCRIPTCACHE,charset,handleScriptPreload); // fake mimetype causes a fetch into cache, but no execution
 			}
 			else if (!first_pass && scriptentry[sPRELOADDONE] != nNULL && !scriptentry[sPRELOADDONE]) { // preload still in progress, make sure trigger is set for execution later
 				scriptentry[sLOADTRIGGER] = function(){loadScriptCache.apply(nNULL,args);};
@@ -193,7 +193,7 @@
 			}
 			else if (!first_pass) { // preload done, so "execute" script via injection
 				all_scripts[scriptentry[sSRCURI]] = bTRUE;
-				createScriptTag(scriptentry,src,type,charset,"",nNULL,scriptentry.xhr.responseText);
+				createScriptTag(scriptentry,src,type,charset,nNULL,scriptentry.xhr.responseText);
 				scriptentry.xhr = nNULL;
 			}
 		}
