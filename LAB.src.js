@@ -1,5 +1,5 @@
 // LAB.js (LABjs :: Loading And Blocking JavaScript)
-// v1.0.2c (c) Kyle Simpson
+// v1.0.2d (c) Kyle Simpson
 // MIT License
 
 (function(global){
@@ -38,6 +38,7 @@
 		PAGEROOT = /^[^?#]*\//.exec(oWINLOC.href)[0], // these ROOTs do not support file:/// usage, only http:// type usage
 		DOCROOT = /^\w+\:\/\/\/?[^\/]+/.exec(PAGEROOT)[0], // optional third / in the protocol portion of this regex so that LABjs doesn't blow up when used in file:/// usage
 		docScripts = fGETELEMENTSBYTAGNAME(sSCRIPT),
+		idx, // reusable iterator variable
 
 		// Ah-ha hush that fuss, feature inference is used to detect specific browsers
 		// because the techniques used in LABjs have no known feature detection. If
@@ -72,8 +73,9 @@
 	}
 	function sameDomain(src) { return (canonicalScriptURI(src).indexOf(DOCROOT) === 0); }
 	function scriptTagExists(uri) { // checks if a script uri has ever been loaded into this page's DOM
-		var i = 0, script;
-		while (script = docScripts[i++]) {
+		var script;
+		idx=-1;
+		while (script = docScripts[++idx]) {
 			if (typeof script.src === sSTRING && uri === canonicalScriptURI(script.src) && script.getAttribute("rel") !== sPRELOAD) return bTRUE;
 		}
 		return bFALSE;
@@ -232,10 +234,10 @@
 			if (!queueExec || _use_preload) execBody(); // if engine is either not queueing, or is queuing in preload mode, go ahead and execute
 		}
 		function serializeArgs(args) {
-			var sargs = [], i;
-			for (i=0; i<args.length; i++) {
-				if (fOBJTOSTRING.call(args[i]) === sTYPEARRAY) sargs = sargs.concat(serializeArgs(args[i]));
-				else sargs[sargs.length] = args[i];
+			var sargs = [];
+			for (idx=-1; ++idx<args.length;) {
+				if (fOBJTOSTRING.call(args[idx]) === sTYPEARRAY) sargs = sargs.concat(serializeArgs(args[idx]));
+				else sargs[sargs.length] = args[idx];
 			}
 			return sargs;
 		}
@@ -245,20 +247,20 @@
 				fCLEARTIMEOUT(end_of_chain_check_interval);
 				var args = serializeArgs(arguments), use_engine = publicAPI;
 				if (_auto_wait) {
-					for (var i=0; i<args.length; i++) {
-						if (i===0) {
+					for (idx=-1; ++idx<args.length;) {
+						if (idx===0) {
 							queueAndExecute(function(){
 								loadScript((typeof args[0] === sSTRING) ? {src:args[0]} : args[0]);
 							});
 						}
-						else use_engine = use_engine.script(args[i]);
+						else use_engine = use_engine.script(args[idx]);
 						use_engine = use_engine.wait();
 					}
 				}
 				else {
 					queueAndExecute(function(){
-						for (var i=0; i<args.length; i++) {
-							loadScript((typeof args[i] === sSTRING) ? {src:args[i]} : args[i]);
+						for (idx=-1; ++idx<args.length;) {
+							loadScript((typeof args[idx] === sSTRING) ? {src:args[idx]} : args[idx]);
 						}
 					});
 				}
@@ -290,8 +292,9 @@
 			// if queueing, return a function that the previous chain's waitFunc function can use to trigger this 
 			// engine's queue. NOTE: this trigger function is captured and removed from the public chain API before return
 			publicAPI.trigger = function() {
-				var i=0, fn; 
-				while (fn = exec[i++]) fn();
+				var fn; 
+				idx=-1;
+				while (fn = exec[++idx]) fn();
 				exec = []; 
 			};
 		}
