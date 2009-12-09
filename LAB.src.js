@@ -26,7 +26,7 @@
 		bTRUE = true,
 		bFALSE = false,
 		oDOC = global.document,
-		oDOCLOC = oDOC.location,
+		oWINLOC = global.location,
 		oACTIVEX = global.ActiveXObject,
 		fSETTIMEOUT = global.setTimeout,
 		fCLEARTIMEOUT = global.clearTimeout,
@@ -35,7 +35,7 @@
 		fNOOP = function(){},
 		append_to = {},
 		all_scripts = {},
-		PAGEROOT = /^[^?#]*\//.exec(oDOCLOC.href)[0], // these ROOTs do not support file:/// usage, only http:// type usage
+		PAGEROOT = /^[^?#]*\//.exec(oWINLOC.href)[0], // these ROOTs do not support file:/// usage, only http:// type usage
 		DOCROOT = /^\w+\:\/\/\/?[^\/]+/.exec(PAGEROOT)[0], // optional third / in the protocol portion of this regex so that LABjs doesn't blow up when used in file:/// usage
 		docScripts = fGETELEMENTSBYTAGNAME(sSCRIPT),
 
