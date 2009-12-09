@@ -91,9 +91,6 @@
 			scripts_loading = bFALSE,
 			publicAPI,
 
-
-
-
 			first_pass = bTRUE,
 			scripts = {},
 			exec = [],
