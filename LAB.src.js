@@ -15,6 +15,7 @@
 		sCOMPLETE = "complete",
 		sDONE = "done",
 		sWHICH = "which",
+		sPRESERVE = "preserve",
 		sONREADYSTATECHANGE = "onreadystatechange",
 		sONLOAD = "onload",
 		sHASOWNPROPERTY = "hasOwnProperty",
@@ -48,11 +49,11 @@
 			order:is_gecko||is_opera, // FF/Opera preserve execution order with script tags automatically, so just add all scripts as fast as possible
 			xhr:bTRUE, // use XHR trick to preload local scripts
 			dupe:bTRUE, // allow duplicate scripts? defaults to true now 'cause is slightly more performant that way (less checks)
-			preserve:bFALSE, // preserve execution order of all loaded scripts (regardless of preloading)
 			base:"", // base path to prepend to all non-absolute-path scripts
 			which:sHEAD // which DOM object ("head" or "body") to append scripts to
 		}
 	;
+	global_defs[sPRESERVE] = bFALSE; // force preserve execution order of all loaded scripts (regardless of preloading)
 	global_defs[sPRELOAD] = bTRUE; // use various tricks for "preloading" scripts
 	
 	append_to[sHEAD] = fGETELEMENTSBYTAGNAME(sHEAD);
@@ -83,7 +84,7 @@
 			_use_cache_preload = _use_preload && opts.cache,
 			_use_script_order = _use_preload && opts.order,
 			_use_xhr_preload = _use_preload && opts.xhr,
-			_auto_wait = opts.preserve,
+			_auto_wait = opts[sPRESERVE],
 			_which = opts.which,
 			_base_path = opts.base,
 			waitFunc = fNOOP,
@@ -298,8 +299,8 @@
 	}
 	function processOpts(opts) {
 		var k, newOpts = {}, 
-			boolOpts = {"UseCachePreload":"cache","UseLocalXHR":"xhr","UsePreloading":sPRELOAD,"AlwaysPreserveOrder":"preserve","AllowDuplicates":"dupe"},
-			allOpts = {"AppendTo":"which","BasePath":"base"}
+			boolOpts = {"UseCachePreload":"cache","UseLocalXHR":"xhr","UsePreloading":sPRELOAD,"AlwaysPreserveOrder":sPRESERVE,"AllowDuplicates":"dupe"},
+			allOpts = {"AppendTo":sWHICH,"BasePath":"base"}
 		;
 		for (k in boolOpts) allOpts[k] = boolOpts[k];
 		newOpts.order = !(!global_defs.order);
