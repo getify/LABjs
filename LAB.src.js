@@ -20,7 +20,7 @@
 		sONLOAD = "onload",
 		sHASOWNPROPERTY = "hasOwnProperty",
 		sTYPEOBJ = "[object ",
-		sTYPEFUNC = sTYEPOBJ+"Function]",
+		sTYPEFUNC = sTYPEOBJ+"Function]",
 		sTYPEARRAY = sTYPEOBJ+"Array]",
 		nNULL = null,
 		bTRUE = true,
