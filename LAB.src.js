@@ -1,5 +1,5 @@
 // LAB.js (LABjs :: Loading And Blocking JavaScript)
-// v1.0.2d (c) Kyle Simpson
+// v1.0.2e (c) Kyle Simpson
 // MIT License
 
 (function(global){
@@ -129,7 +129,7 @@
 			if (!isScriptLoaded(elem,scriptentry)) return;
 			scriptentry[sPRELOADDONE] = bTRUE;
 			fSETTIMEOUT(function(){
-				append_to[scriptentry[sWHICH]][0].removeChild(elem); // remove preload script node
+				append_to[scriptentry[sWHICH]].removeChild(elem); // remove preload script node
 				loadTriggerExecute(scriptentry);
 			},0);
 		}
@@ -141,19 +141,23 @@
 			}
 		}
 		function createScriptTag(scriptentry,src,type,charset,onload,scriptText) {
-			fSETTIMEOUT(function(){
-				if (append_to[scriptentry[sWHICH]][0] === nNULL) { // append_to object not yet ready
-					fSETTIMEOUT(arguments.callee,25); 
-					return;
+			var _script_which = scriptentry[sWHICH];
+			fSETTIMEOUT(function() { // this setTimeout waiting "hack" prevents a nasty race condition browser hang (IE) when the document.write("<script defer=true>") type dom-ready hack is present in the page
+				if ("item" in append_to[_script_which]) { // check if ref is still a live node list
+					if (!append_to[_script_which][0]) { // append_to node not yet ready
+						fSETTIMEOUT(arguments.callee,25); // try again in a little bit -- note, will recall the anonymous functoin in the outer setTimeout, not the parent createScriptTag()
+						return;
+					}
+					append_to[_script_which] = append_to[_script_which][0]; // reassign from live node list ref to pure node ref -- avoids nasty IE bug where changes to DOM invalidate live node lists
 				}
-				var scriptElem = oDOC.createElement(sSCRIPT), fSETATTRIBUTE = function(attr,val){scriptElem.setAttribute(attr,val);};
-				fSETATTRIBUTE("type",type);
-				if (typeof charset === sSTRING) fSETATTRIBUTE("charset",charset);
+				var scriptElem = oDOC.createElement(sSCRIPT);
+				scriptElem.type = type;
+				if (typeof charset === sSTRING) scriptElem.charset = charset;
 				if (isFunc(onload)) { // load script via 'src' attribute, set onload/onreadystatechange listeners
 					scriptElem[sONLOAD] = scriptElem[sONREADYSTATECHANGE] = function(){onload(scriptElem,scriptentry);};
-					fSETATTRIBUTE("src",src);
+					scriptElem.src = src;
 				}
-				append_to[scriptentry[sWHICH]][0].appendChild(scriptElem);
+				append_to[_script_which].appendChild(scriptElem);
 				if (typeof scriptText === sSTRING) { // script text already avaiable from XHR preload, so just inject it
 					scriptElem.text = scriptText;
 					handleScriptLoad(scriptElem,scriptentry,bTRUE); // manually call 'load' callback function, skipReadyCheck=true
