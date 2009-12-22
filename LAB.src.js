@@ -157,7 +157,8 @@
 					scriptElem[sONLOAD] = scriptElem[sONREADYSTATECHANGE] = function(){onload(scriptElem,scriptentry);};
 					scriptElem.src = src;
 				}
-				append_to[_script_which].appendChild(scriptElem);
+				// only for appending to <head>, fix a bug in IE6 if <base> tag is present -- otherwise, insertBefore(...,null) acts just like appendChild()
+				append_to[_script_which].insertBefore(scriptElem,(_script_which===sHEAD?append_to[_script_which].firstChild:nNULL));
 				if (typeof scriptText === sSTRING) { // script text already avaiable from XHR preload, so just inject it
 					scriptElem.text = scriptText;
 					handleScriptLoad(scriptElem,scriptentry,bTRUE); // manually call 'load' callback function, skipReadyCheck=true
