@@ -54,10 +54,16 @@ would tell just this particular $LAB chain to do the same.
 
 The configuration options available are:
 
-UseCachePreload:true/false (default true): uses the mime-type cache trick (in browsers that support it) for preloading scripts from remote (cross-domain) locations
-UseLocalXHR:true/false (default true): use XHR to preload scripts from local (same-domain) locations
-UsePreloading:true/false (default true): use the cache and xhr tricks for preloading scripts in parallel
-AlwaysPreserveOrder:true/false (default false): whether to insert an implicit .wait() call after each script load request... if turned on, prevents immediate execution of loaded files and instead executes all scripts in order
-AllowDuplicates:true/false (default true): whether to inspect the current page and $LAB loading cache to see if the same script URL has already been requested and allow (true) or ignore (false) if so. NOTE: because $LAB chains are independent, may not necessarily work well across different chains if preloading is in effect.
-AppendTo:"head"/"body" (default "head"): which document element to append script elements to
-BasePath:{string} (default ""): a path string to append to every script request
+* UseCachePreload:true/false (default true): uses the mime-type cache trick (in browsers that support it) for preloading scripts from remote (cross-domain) locations
+
+* UseLocalXHR:true/false (default true): use XHR to preload scripts from local (same-domain) locations
+
+* UsePreloading:true/false (default true): use the cache and xhr tricks for preloading scripts in parallel
+
+* AlwaysPreserveOrder:true/false (default false): whether to insert an implicit .wait() call after each script load request... if turned on, prevents immediate execution of loaded files and instead executes all scripts in order
+
+* AllowDuplicates:true/false (default true): whether to inspect the current page and $LAB loading cache to see if the same script URL has already been requested and allow (true) or ignore (false) if so. NOTE: because $LAB chains are independent, may not necessarily work well across different chains if preloading is in effect.
+
+* AppendTo:"head"/"body" (default "head"): which document element to append script elements to
+
+* BasePath:{string} (default ""): a path string to append to every script request
