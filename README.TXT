@@ -66,4 +66,4 @@ The configuration options available are:
 
 * AppendTo:"head"/"body" (default "head"): which document element to append script elements to
 
-* BasePath:{string} (default ""): a path string to append to every script request
+* BasePath:{string} (default ""): a path string to prepend to every script request's URL
