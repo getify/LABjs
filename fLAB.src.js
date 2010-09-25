@@ -159,7 +159,7 @@
 		;
 		for (k in boolOpts) allOpts[k] = boolOpts[k];
 		for (k in allOpts) {
-			if (allOpts.hasOwnProperty(k) && typeof global_defs[allOpts[k]] !== sUNDEF) newOpts[allOpts[k]] = (typeof opts[k] !== sUNDEF) ? opts[k] : global_defs[allOpts[k]];
+			if (allOpts.hasOwnProperty(k) && typeof global_defs[allOpts[k]] !== sUNDEF) newOpts[allOpts[k]] = (opts && typeof opts[k] !== sUNDEF) ? opts[k] : global_defs[allOpts[k]];
 		}
 		for (k in boolOpts) { // normalize bool props to actual boolean values if not already
 			if (boolOpts.hasOwnProperty(k)) newOpts[boolOpts[k]] = !(!newOpts[boolOpts[k]]);
