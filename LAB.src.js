@@ -1,6 +1,7 @@
-// LAB.js (LABjs :: Loading And Blocking JavaScript)
-// v1.0.2rc1 (c) Kyle Simpson
-// MIT License
+/*! LAB.js (LABjs :: Loading And Blocking JavaScript)
+    v1.0.3 (c) Kyle Simpson
+    MIT License
+*/
 
 (function(global){
 	var sSTRING = "string",				// constants used for compression optimization
@@ -46,7 +47,7 @@
 		// instead of user agent sniffing because the UA string can be easily
 		// spoofed and is not adequate for such a mission critical part of the code.
 		is_opera = global.opera && fOBJTOSTRING.call(global.opera) == sTYPEOBJ+"Opera]",
-		is_gecko = (function(o) { o[o] = o+""; return o[o] != o+""; })(new String("__count__")),
+		is_gecko = ("MozAppearance" in oDOC.documentElement.style),
 
 		global_defs = {
 			cache:!(is_gecko||is_opera), // browsers like IE/Safari/Chrome can use the "cache" trick to preload
@@ -60,14 +61,14 @@
 	global_defs[sPRESERVE] = bFALSE; // force preserve execution order of all loaded scripts (regardless of preloading)
 	global_defs[sPRELOAD] = bTRUE; // use various tricks for "preloading" scripts
 	
-	append_to[sHEAD] = fGETELEMENTSBYTAGNAME(sHEAD);
+	append_to[sHEAD] = oDOC.head || fGETELEMENTSBYTAGNAME(sHEAD);
 	append_to[sBODY] = fGETELEMENTSBYTAGNAME(sBODY);
 	
 	function isFunc(func) { return fOBJTOSTRING.call(func) === sTYPEFUNC; }
 	function canonicalScriptURI(src,base_path) {
 		var regex = /^\w+\:\/\//, ret; 
-		if (typeof src !== sSTRING) src = "";
-		if (typeof base_path !== sSTRING) base_path = "";
+		if (typeof src != sSTRING) src = "";
+		if (typeof base_path != sSTRING) base_path = "";
 		ret = (regex.test(src) ? "" : base_path) + src;
 		return ((regex.test(ret) ? "" : (ret.charAt(0) === "/" ? DOCROOT : PAGEROOT)) + ret);
 	}
@@ -75,7 +76,7 @@
 	function scriptTagExists(uri) { // checks if a script uri has ever been loaded into this page's DOM
 		var script, idx=-1;
 		while (script = docScripts[++idx]) {
-			if (typeof script.src === sSTRING && uri === canonicalScriptURI(script.src) && script.type !== sSCRIPTCACHE) return bTRUE;
+			if (typeof script.src == sSTRING && uri === canonicalScriptURI(script.src) && script.type !== sSCRIPTCACHE) return bTRUE;
 		}
 		return bFALSE;
 	}
@@ -145,21 +146,21 @@
 			fSETTIMEOUT(function() { // this setTimeout waiting "hack" prevents a nasty race condition browser hang (IE) when the document.write("<script defer=true>") type dom-ready hack is present in the page
 				if ("item" in append_to[_script_which]) { // check if ref is still a live node list
 					if (!append_to[_script_which][0]) { // append_to node not yet ready
-						fSETTIMEOUT(arguments.callee,25); // try again in a little bit -- note, will recall the anonymous functoin in the outer setTimeout, not the parent createScriptTag()
+						fSETTIMEOUT(arguments.callee,25); // try again in a little bit -- note, will recall the anonymous function in the outer setTimeout, not the parent createScriptTag()
 						return;
 					}
 					append_to[_script_which] = append_to[_script_which][0]; // reassign from live node list ref to pure node ref -- avoids nasty IE bug where changes to DOM invalidate live node lists
 				}
 				var scriptElem = oDOC.createElement(sSCRIPT);
-				scriptElem.type = type;
-				if (typeof charset === sSTRING) scriptElem.charset = charset;
+				if (typeof type == sSTRING) scriptElem.type = type;
+				if (typeof charset == sSTRING) scriptElem.charset = charset;
 				if (isFunc(onload)) { // load script via 'src' attribute, set onload/onreadystatechange listeners
 					scriptElem[sONLOAD] = scriptElem[sONREADYSTATECHANGE] = function(){onload(scriptElem,scriptentry);};
 					scriptElem.src = src;
 				}
 				// only for appending to <head>, fix a bug in IE6 if <base> tag is present -- otherwise, insertBefore(...,null) acts just like appendChild()
 				append_to[_script_which].insertBefore(scriptElem,(_script_which===sHEAD?append_to[_script_which].firstChild:nNULL));
-				if (typeof scriptText === sSTRING) { // script text already avaiable from XHR preload, so just inject it
+				if (typeof scriptText == sSTRING) { // script text already avaiable from XHR preload, so just inject it
 					scriptElem.text = scriptText;
 					handleScriptLoad(scriptElem,scriptentry,bTRUE); // manually call 'load' callback function, skipReadyCheck=true
 				}
@@ -204,8 +205,7 @@
 			if (o.allowDup == nNULL) o.allowDup = opts.dupe;
 			var src = o.src, type = o.type, charset = o.charset, allowDup = o.allowDup, 
 				src_uri = canonicalScriptURI(src,_base_path), scriptentry, same_domain = sameDomain(src_uri);
-			if (typeof type !== sSTRING) type = "text/javascript";
-			if (typeof charset !== sSTRING) charset = nNULL;
+			if (typeof charset != sSTRING) charset = nNULL;
 			allowDup = !(!allowDup);
 			if (!allowDup && 
 				(
@@ -253,7 +253,7 @@
 					for (idx=-1; ++idx<args.length;) {
 						if (idx===0) {
 							queueAndExecute(function(){
-								loadScript((typeof args[0] === sSTRING) ? {src:args[0]} : args[0]);
+								loadScript((typeof args[0] == sSTRING) ? {src:args[0]} : args[0]);
 							});
 						}
 						else use_engine = use_engine.script(args[idx]);
@@ -263,7 +263,7 @@
 				else {
 					queueAndExecute(function(){
 						for (idx=-1; ++idx<args.length;) {
-							loadScript((typeof args[idx] === sSTRING) ? {src:args[idx]} : args[idx]);
+							loadScript((typeof args[idx] == sSTRING) ? {src:args[idx]} : args[idx]);
 						}
 					});
 				}
@@ -290,7 +290,6 @@
 				return e;
 			}
 		};
-		publicAPI.block = publicAPI.wait;	// alias "block" to "wait" -- "block" is now deprecated
 		if (queueExec) {
 			// if queueing, return a function that the previous chain's waitFunc function can use to trigger this 
 			// engine's queue. NOTE: this trigger function is captured and removed from the public chain API before return
@@ -334,7 +333,6 @@
 			return engine().wait.apply(nNULL,arguments);
 		}
 	};
-	global.$LAB.block = global.$LAB.wait;	// alias "block" to "wait" -- "block" is now deprecated
 	
 	/* The following "hack" was suggested by Andrea Giammarchi and adapted from: http://webreflection.blogspot.com/2009/11/195-chars-to-help-lazy-loading.html
 	   NOTE: this hack only operates in FF and then only in versions where document.readyState is not present (FF < 3.6?).
@@ -342,8 +340,8 @@
 	   The hack essentially "patches" the **page** that LABjs is loaded onto so that it has a proper conforming document.readyState, so that if a script which does 
 	   proper and safe dom-ready detection is loaded onto a page, after dom-ready has passed, it will still be able to detect this state, by inspecting the now hacked 
 	   document.readyState property. The loaded script in question can then immediately trigger any queued code executions that were waiting for the DOM to be ready. 
-	   For instance, jQuery > 1.3.2 has been patched to take advantage of document.readyState, which is enabled by this hack. But 1.3.2 and before are **not** safe or 
-	   affected by this hack, and should therefore **not** be lazy-loaded by script loader tools such as LABjs.
+	   For instance, jQuery 1.4+ has been patched to take advantage of document.readyState, which is enabled by this hack. But 1.3.2 and before are **not** safe or 
+	   fixed by this hack, and should therefore **not** be lazy-loaded by script loader tools such as LABjs.
 	*/ 
 	(function(addEvent,domLoaded,handler){
 		if (oDOC[sREADYSTATE] == nNULL && oDOC[addEvent]){
