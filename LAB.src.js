@@ -1,5 +1,5 @@
 /*! LAB.js (LABjs :: Loading And Blocking JavaScript)
-    v1.0.3 (c) Kyle Simpson
+    v1.0.4 (c) Kyle Simpson
     MIT License
 */
 
@@ -48,10 +48,15 @@
 		// spoofed and is not adequate for such a mission critical part of the code.
 		is_opera = global.opera && fOBJTOSTRING.call(global.opera) == sTYPEOBJ+"Opera]",
 		is_gecko = ("MozAppearance" in oDOC.documentElement.style),
+		
+		// the following is a feature sniff for the ability to set async=false on dynamically created script elements, as proposed to the W3C
+		// RE: http://wiki.whatwg.org/wiki/Dynamic_Script_Execution_Order
+		is_script_async = (oDOC.createElement(sSCRIPT).async === true),
 
 		global_defs = {
 			cache:!(is_gecko||is_opera), // browsers like IE/Safari/Chrome can use the "cache" trick to preload
-			order:is_gecko||is_opera, // FF/Opera preserve execution order with script tags automatically, so just add all scripts as fast as possible
+			order:is_gecko||is_opera||is_script_async,	// FF(prior to FF4) & Opera preserve execution order with script tags automatically,
+														// so just add all scripts as fast as possible. FF4 has async=false to do the same
 			xhr:bTRUE, // use XHR trick to preload local scripts
 			dupe:bTRUE, // allow duplicate scripts? defaults to true now 'cause is slightly more performant that way (less checks)
 			base:"", // base path to prepend to all non-absolute-path scripts
@@ -157,6 +162,9 @@
 				if (isFunc(onload)) { // load script via 'src' attribute, set onload/onreadystatechange listeners
 					scriptElem[sONLOAD] = scriptElem[sONREADYSTATECHANGE] = function(){onload(scriptElem,scriptentry);};
 					scriptElem.src = src;
+					if (is_script_async) {
+						scriptElem.async = bFALSE;
+					}
 				}
 				// only for appending to <head>, fix a bug in IE6 if <base> tag is present -- otherwise, insertBefore(...,null) acts just like appendChild()
 				append_to[_script_which].insertBefore(scriptElem,(_script_which===sHEAD?append_to[_script_which].firstChild:nNULL));
