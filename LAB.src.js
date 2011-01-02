@@ -1,5 +1,5 @@
 /*! LAB.js (LABjs :: Loading And Blocking JavaScript)
-    v1.0.4 (c) Kyle Simpson
+    v1.1.11 (c) Kyle Simpson
     MIT License
 */
 
@@ -210,6 +210,7 @@
 			}
 		}
 		function loadScript(o) {
+			if (typeof o == "undefined" || !o) return; // skip over this script call if there's nothing to load
 			if (o.allowDup == nNULL) o.allowDup = opts.dupe;
 			var src = o.src, type = o.type, charset = o.charset, allowDup = o.allowDup, 
 				src_uri = canonicalScriptURI(src,_base_path), scriptentry, same_domain = sameDomain(src_uri);
@@ -259,6 +260,7 @@
 				var args = serializeArgs(arguments), use_engine = publicAPI, idx;
 				if (_auto_wait) {
 					for (idx=-1; ++idx<args.length;) {
+						if (isFunc(args[idx])) args[idx] = args[idx](); // if a function is found, call/evaluate it first
 						if (idx===0) {
 							queueAndExecute(function(){
 								loadScript((typeof args[0] == sSTRING) ? {src:args[0]} : args[0]);
@@ -269,6 +271,9 @@
 					}
 				}
 				else {
+					for (idx=-1; ++idx<args.length;) {
+						if (isFunc(args[idx])) args[idx] = args[idx](); // if a function is found, call/evaluate it first
+					}
 					queueAndExecute(function(){
 						for (idx=-1; ++idx<args.length;) {
 							loadScript((typeof args[idx] == sSTRING) ? {src:args[idx]} : args[idx]);
