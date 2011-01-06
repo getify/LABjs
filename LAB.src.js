@@ -1,5 +1,5 @@
 /*! LAB.js (LABjs :: Loading And Blocking JavaScript)
-    v1.1.11 (c) Kyle Simpson
+    v1.1.12 (c) Kyle Simpson
     MIT License
 */
 
@@ -289,7 +289,7 @@
 				if (!isFunc(func)) func = fNOOP;
 				// On this current chain's waitFunc function, tack on call to trigger the queue for the *next* engine 
 				// in the chain, which will be executed when the current chain finishes loading
-				var e = engine(bTRUE,opts),	// 'bTRUE' tells the engine to be in queueing mode
+				var e = engine(queueExec||scripts_loading,opts),	// if already in queuing, or if scripts now loading, keep queuing
 					triggerNextChain = e.trigger, // store ref to e's trigger function for use by 'wfunc'
 					wfunc = function(){ try { func(); } catch(err) {} triggerNextChain(); };
 				delete e.trigger; // remove the 'trigger' property from e's public API, since only used internally
@@ -312,6 +312,7 @@
 				exec = []; 
 			};
 		}
+		else publicAPI.trigger = fNOOP; // no-op trigger function because this chain is not in queuing mode, so nothing to trigger
 		return publicAPI;
 	}
 	function processOpts(opts) {
