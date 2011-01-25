@@ -67,3 +67,12 @@ The configuration options available are:
 * AppendTo:"head"/"body" (default "head"): which document element to append script elements to
 
 * BasePath:{string} (default ""): a path string to prepend to every script request's URL
+
+
+Special Note: Protocol-relative URLs
+
+Browsers have long supported "protocol-relative URLs", which basically means leaving off the "http:" or "https:" portion of a URL (leaving just the "//domain.tld/path/..." part), which causes that URL to be assumed to be the same protocol as the parent page. The benefit is that if you have a page that can be viewed in either HTTP or HTTPS, and your resources can (and need to be) served through either HTTP or HTTPS, respectively, you can simply list your URLs as protocol-relative and the browser will auto-select based on which protocol the page is viewed in.
+
+LABjs now supports specifying such URLs to any script URL setting. NOTE: This is the recommended way to specify URLs for script resources if: a) the page you're serving can be viewed in both HTTP and HTTPS; and b) the script resource you're linking to can be accessed using the exact same domain/path with exception to the protocol. 
+
+A common example of such a resource is the CDN locations on the Google Ajax API, where popular frameworks like jQuery and Dojo are hosted. If you are linking to such CDN resources, you are strongly encouraged to change to using protocol-relative URLs, like "//ajax.googleapis.com/ajax/libs/jquery/1.4.4/jquery.min.js" instead of "http://ajax.googleapis.com/ajax/libs/jquery/1.4.4/jquery.min.js" or "https://ajax.googleapis.com/ajax/libs/jquery/1.4.4/jquery.min.js".
