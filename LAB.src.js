@@ -1,5 +1,5 @@
 /*! LAB.js (LABjs :: Loading And Blocking JavaScript)
-    v1.1.12 (c) Kyle Simpson
+    v1.2.0 (c) Kyle Simpson
     MIT License
 */
 
@@ -74,7 +74,8 @@
 		var regex = /^\w+\:\/\//, ret; 
 		if (typeof src != sSTRING) src = "";
 		if (typeof base_path != sSTRING) base_path = "";
-		ret = (regex.test(src) ? "" : base_path) + src;
+		ret = ((/^\/\//.test(src)) ? oWINLOC.protocol : "") + src;
+		ret = (regex.test(ret) ? "" : base_path) + ret;
 		return ((regex.test(ret) ? "" : (ret.charAt(0) === "/" ? DOCROOT : PAGEROOT)) + ret);
 	}
 	function sameDomain(src) { return (canonicalScriptURI(src).indexOf(DOCROOT) === 0); }
@@ -238,11 +239,8 @@
 			else if (!_use_script_order && _use_cache_preload) loadScriptCache(scriptentry,src_uri,type,charset);
 			else loadScriptElem(scriptentry,src_uri,type,charset);
 		}
-		function onlyQueue(execBody) {
-			exec.push(execBody);
-		}
 		function queueAndExecute(execBody) { // helper for publicAPI functions below
-			if (queueExec && !_use_script_order) onlyQueue(execBody);
+			if (queueExec && !_use_script_order) exec.push(execBody);
 			if (!queueExec || _use_preload) execBody(); // if engine is either not queueing, or is queuing in preload mode, go ahead and execute
 		}
 		function serializeArgs(args) {
@@ -298,7 +296,7 @@
 					else wfunc();
 				};
 
-				if (queueExec && !scripts_loading) onlyQueue(fn);
+				if (queueExec && !scripts_loading) exec.push(fn);
 				else queueAndExecute(fn);
 				return e;
 			}
