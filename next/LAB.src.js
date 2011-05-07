@@ -100,6 +100,7 @@
 		};
 	}
 
+	// script executed handler
 	function script_executed(script_obj,chain_group,registry_item) {
 		registry_item.ready = registry_item.finished = true;
 		for (var i=0; i<registry_item.finished_listeners.length; i++) {
@@ -107,32 +108,6 @@
 		}
 		registry_item.ready_listeners = [];
 		registry_item.finished_listeners = [];
-	}
-
-	function execute_preloaded_script(script_obj,chain_group,registry_item) {
-		var script = registry_item.elem || document.createElement("script");
-		if (script_obj.type) script.type = script_obj.type;
-		if (script_obj.charset) script.charset = script_obj.charset;
-		create_script_load_listener(script,registry_item,"finished",function(){
-			script_executed(script_obj,chain_group,registry_item);
-			script = null;
-		});
-		
-		// script elem was real-preloaded
-		if (registry_item.elem) {
-			append_to.insertBefore(script,append_to.firstChild);
-			registry_item.elem = null;
-		}
-		// script was XHR preloaded
-		else if (registry_item.text) {
-			script.text = registry_item.text;
-			append_to.insertBefore(script,append_to.firstChild);
-		}
-		// script was cache-preloaded
-		else {
-			script.src = script_obj.src;
-			append_to.insertBefore(script,append_to.firstChild);
-		}
 	}
 
 	// make the request for a script
@@ -221,22 +196,52 @@
 		// global defaults
 		global_defaults[_UseLocalXHR] = true;
 		global_defaults[_AlwaysPreserveOrder] = false;
-		global_defaults[_AllowDuplicates] = true;
+		global_defaults[_AllowDuplicates] = false;
 		global_defaults[_BasePath] = "";
 
+		// execute a script that has been preloaded already
+		function execute_preloaded_script(chain_opts,script_obj,chain_group,registry_item) {
+			if (registry[script_obj.src].executed) return;
+			if (!chain_opts[_AllowDuplicates]) registry[script_obj.src].executed = true;
+			
+			var script = registry_item.elem || document.createElement("script");
+			if (script_obj.type) script.type = script_obj.type;
+			if (script_obj.charset) script.charset = script_obj.charset;
+			create_script_load_listener(script,registry_item,"finished",function(){
+				script_executed(script_obj,chain_group,registry_item);
+				script = null;
+			});
+			
+			// script elem was real-preloaded
+			if (registry_item.elem) {
+				append_to.insertBefore(script,append_to.firstChild);
+				registry_item.elem = null;
+			}
+			// script was XHR preloaded
+			else if (registry_item.text) {
+				script.text = registry_item.text;
+				append_to.insertBefore(script,append_to.firstChild);
+			}
+			// script was cache-preloaded
+			else {
+				script.src = script_obj.src;
+				append_to.insertBefore(script,append_to.firstChild);
+			}
+		}
+	
 		// process the script request setup
 		function do_script(chain_opts,script_obj,chain_group) {
 			var registry_item,
 				registry_items,
-				ready_cb = function(){ script_obj.ready_cb(script_obj,chain_group,function(){ execute_preloaded_script(script_obj,chain_group,registry_item); }); },
+				ready_cb = function(){ script_obj.ready_cb(script_obj,chain_group,function(){ execute_preloaded_script(chain_opts,script_obj,chain_group,registry_item); }); },
 				finished_cb = function(){ script_obj.finished_cb(script_obj,chain_group); }
 			;
 			
 			script_obj.src = canonical_uri(script_obj.src,chain_opts[_BasePath]);
 	
-			if (!registry[script_obj.src]) registry[script_obj.src] = [];
-			registry_items = registry[script_obj.src];
-	
+			if (!registry[script_obj.src]) registry[script_obj.src] = {items:[],executed:false};
+			registry_items = registry[script_obj.src].items;
+
 			// allowing duplicates, or is this the first recorded load of this script?
 			if (chain_opts[_AllowDuplicates] || registry_items.length == 0) {
 				registry_item = registry_items[registry_items.length] = {
@@ -258,7 +263,7 @@
 				);
 			}
 			else {
-				registry_item = registry[script_obj.src][0];
+				registry_item = registry_items[0];
 				if (registry_item.finished) {
 					setTimeout(finished_cb,0);
 				}
