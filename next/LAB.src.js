@@ -90,6 +90,15 @@
 		return true;
 	}
 	
+	// creates a script load listener
+	function create_script_load_listener(elem,script_registry_entry,flag,onload) {
+		elem.onload = elem.onreadystatechange = function() {
+			if ((elem.readyState && elem.readyState != "complete" && elem.readyState != "loaded") || script_registry_entry[flag]) return;
+			elem.onload = elem.onreadystatechange = null;
+			onload();
+		};
+	}
+	
 	// create a clean instance of $LAB
 	function sandbox() {
 		var global_defaults = {},
@@ -110,10 +119,34 @@
 			for (var i=0; i<script_registry_item.finished_listeners.length; i++) {
 				setTimeout(script_registry_item.finished_listeners[i],0);
 			}
+			script_registry_item.ready_listeners = [];
 			script_registry_item.finished_listeners = [];
 		}
 
 		function execute_preloaded_script(script_obj,chain_group,script_registry_item) {
+			var script = script_registry_item.elem || document.createElement("script");
+			if (script_obj.type) script.type = script_obj.type;
+			if (script_obj.charset) script.charset = script_obj.charset;
+			create_script_load_listener(script,script_registry_entry,"finished",function(){
+				script_executed(script_obj,chain_group,script_registry_item);
+				script = null;
+			});
+			
+			// script elem was real-preloaded
+			if (script_registry_item.elem) {
+				append_to.insertBefore(script,append_to.firstChild);
+				script_registry_item.elem = null;
+			}
+			// script was XHR preloaded
+			else if (script_registery_item.text) {
+				script.text = script_registry_item.text;
+				append_to.insertBefore(script,append_to.firstChild);
+			}
+			// script was cache-preloaded
+			else {
+				script.src = script_obj.src;
+				append_to.insertBefore(script,append_to.firstChild);
+			}
 		}
 
 		function request_script(chain_opts,script_obj,script_registry_item,preload,onload) {
@@ -126,7 +159,17 @@
 					append_to = append_to[0]; // reassign from live node list ref to pure node ref -- avoids nasty IE bug where changes to DOM invalidate live node lists
 				}
 				var script = document.createElement("script");
-				if (script_preload) {	// use script preloading
+				if (script_obj.type) script.type = script_obj.type;
+				if (script_obj.charset) script.charset = script_obj.charset;
+				
+				// no preloading, just normal script element
+				if (!preload) {
+					create_script_load_listener(script,script_registry_entry,"finished",onload);
+					script.src = script_obj.src;
+					append_to.insertBefore(script,append_to.firstChild);
+				}
+				// real script preloading
+				else if (script_preload) {
 					script_registry_item.elem = script;
 					if (explicit_script_preloading) { // Zakas style preloading (aka, explicit preloading)
 						script.preload = true;
@@ -135,15 +178,21 @@
 					else {
 						script.onreadystatechange = function(){
 							if (script.readyState == "loaded") onload();
+							script.onreadystatechange = null;
 						};
 					}
 					script.src = script_obj.src;
 					// NOTE: no append to DOM yet, appending will happen when ready to execute
 				}
-				else if (script_async) {	// use async=false parallel-load-serial-execute
-				
+				// use async=false parallel-load-serial-execute
+				else if (script_async) {	
+					script.async = false;
+					create_script_load_listener(script,script_registry_entry,"finished",onload);
+					script.src = script_obj.src;
+					append_to.insertBefore(script,append_to.firstChild);
 				}
-				else if (same_domain(script_obj.src) && chain_opts[_UseLocalXHR]) {	// same-domain, so use XHR+script injection
+				// same-domain, so use XHR+script injection
+				else if (same_domain(script_obj.src) && chain_opts[_UseLocalXHR]) {
 					var xhr = XMLHttpRequest ? new XMLHttpRequest() : (ActiveXObject ? new ActiveXObject("Microsoft.XMLHTTP") : null);
 					if (!xhr) {
 						chain_opts[_UseLocalXHR] = false; // can't use XHR for some reason, so don't try anymore
@@ -159,9 +208,13 @@
 					xhr.open("GET",src);
 					xhr.send("");
 				}
-				else {	// as a last resort, use cache-preloading
+				// as a last resort, use cache-preloading
+				else {
 					script.type = "text/cache-script";
-					script.onload = script.onreadystatechange = function(){};
+					create_script_load_listener(script,script_registry_entry,"ready",function() {
+						append_to.removeChild(script);
+						onload();
+					});
 					script.src = script_obj.src;
 					append_to.insertBefore(script,append_to.firstChild);
 				}
@@ -176,7 +229,6 @@
 			;
 
 			script_obj.src = canonical_uri(script_obj.src,chain_opts[_BasePath]);
-			script_obj.async = script_obj.async || false;
 
 			if (!script_registry[script_obj.src]) script_registry[script_obj.src] = [];
 			script_registry_items = script_registry[script_obj.src];
