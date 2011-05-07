@@ -87,25 +87,133 @@
 		for (var i=0; i<chain_group.scripts.length; i++) {
 			if (!chain_group.scripts[i].finished) return false;
 		}
-		chain_group.scripts[i].finished = true;
+		chain_group.finished = true;
 		return true;
 	}
 	
 	// creates a script load listener
-	function create_script_load_listener(elem,script_registry_item,flag,onload) {
+	function create_script_load_listener(elem,registry_item,flag,onload) {
 		elem.onload = elem.onreadystatechange = function() {
-			if ((elem.readyState && elem.readyState != "complete" && elem.readyState != "loaded") || script_registry_item[flag]) return;
+			if ((elem.readyState && elem.readyState != "complete" && elem.readyState != "loaded") || registry_item[flag]) return;
 			elem.onload = elem.onreadystatechange = null;
 			onload();
 		};
 	}
-	
+
+	function script_executed(script_obj,chain_group,registry_item) {
+		registry_item.ready = registry_item.finished = true;
+		for (var i=0; i<registry_item.finished_listeners.length; i++) {
+			setTimeout(registry_item.finished_listeners[i],0);
+		}
+		registry_item.ready_listeners = [];
+		registry_item.finished_listeners = [];
+	}
+
+	function execute_preloaded_script(script_obj,chain_group,registry_item) {
+		var script = registry_item.elem || document.createElement("script");
+		if (script_obj.type) script.type = script_obj.type;
+		if (script_obj.charset) script.charset = script_obj.charset;
+		create_script_load_listener(script,registry_item,"finished",function(){
+			script_executed(script_obj,chain_group,registry_item);
+			script = null;
+		});
+		
+		// script elem was real-preloaded
+		if (registry_item.elem) {
+			append_to.insertBefore(script,append_to.firstChild);
+			registry_item.elem = null;
+		}
+		// script was XHR preloaded
+		else if (script_registery_item.text) {
+			script.text = registry_item.text;
+			append_to.insertBefore(script,append_to.firstChild);
+		}
+		// script was cache-preloaded
+		else {
+			script.src = script_obj.src;
+			append_to.insertBefore(script,append_to.firstChild);
+		}
+	}
+
+	// make the request for a script
+	function request_script(chain_opts,script_obj,chain_group,registry_item,onload) {
+		setTimeout(function(){
+			if ("item" in append_to) { // check if ref is still a live node list
+				if (!append_to[0]) { // append_to node not yet ready
+					setTimeout(arguments.callee,25); // try again in a little bit -- note, will recall the anonymous function in the outer setTimeout, not the parent `request_script()`
+					return;
+				}
+				append_to = append_to[0]; // reassign from live node list ref to pure node ref -- avoids nasty IE bug where changes to DOM invalidate live node lists
+			}
+			var script = document.createElement("script");
+			if (script_obj.type) script.type = script_obj.type;
+			if (script_obj.charset) script.charset = script_obj.charset;
+			
+			// no preloading, just normal script element
+			if (!chain_group.preload) {
+				create_script_load_listener(script,registry_item,"finished",onload);
+				script.src = script_obj.src;
+				append_to.insertBefore(script,append_to.firstChild);
+			}
+			// real script preloading
+			else if (script_preload) {
+				registry_item.elem = script;
+				if (explicit_script_preloading) { // Zakas style preloading (aka, explicit preloading)
+					script.preload = true;
+					script.onpreload = onload;
+				}
+				else {
+					script.onreadystatechange = function(){
+						if (script.readyState == "loaded") onload();
+						script.onreadystatechange = null;
+					};
+				}
+				script.src = script_obj.src;
+				// NOTE: no append to DOM yet, appending will happen when ready to execute
+			}
+			// use async=false parallel-load-serial-execute
+			else if (script_async) {	
+				script.async = false;
+				create_script_load_listener(script,registry_item,"finished",onload);
+				script.src = script_obj.src;
+				append_to.insertBefore(script,append_to.firstChild);
+			}
+			// same-domain, so use XHR+script injection
+			else if (same_domain(script_obj.src) && chain_opts[_UseLocalXHR]) {
+				var xhr = XMLHttpRequest ? new XMLHttpRequest() : (ActiveXObject ? new ActiveXObject("Microsoft.XMLHTTP") : null);
+				if (!xhr) {
+					global_defaults[_UseLocalXHR] = chain_opts[_UseLocalXHR] = false; // can't use XHR for some reason, so don't try anymore
+					return request_script(chain_opts,registry_item,onload);
+				}
+				xhr.onreadystatechange = function() {
+					if (xhr.readyState === 4) {
+						xhr.onreadystatechange = function(){}; // fix a memory leak in IE
+						registry_item.text = xhr.responseText;
+						onload();
+					}
+				};
+				xhr.open("GET",src);
+				xhr.send("");
+			}
+			// as a last resort, use cache-preloading
+			else {
+				script.type = "text/cache-script";
+				create_script_load_listener(script,registry_item,"ready",function() {
+					append_to.removeChild(script);
+					onload();
+				});
+				script.src = script_obj.src;
+				append_to.insertBefore(script,append_to.firstChild);
+			}
+		},0);
+	}
+		
 	// create a clean instance of $LAB
-	function sandbox() {
+	function create_sandbox() {
 		var global_defaults = {},
 			use_preloading = true,
 			queue = [],
-			script_registry = {},
+			registry = {},
 			instanceAPI
 		;
 
@@ -115,161 +223,55 @@
 		global_defaults[_AllowDuplicates] = true;
 		global_defaults[_BasePath] = "";
 
-		function script_executed(script_obj,chain_group,script_registry_item) {
-			script_registry_item.ready = script_registry_item.finished = true;
-			for (var i=0; i<script_registry_item.finished_listeners.length; i++) {
-				setTimeout(script_registry_item.finished_listeners[i],0);
-			}
-			script_registry_item.ready_listeners = [];
-			script_registry_item.finished_listeners = [];
-		}
-
-		function execute_preloaded_script(script_obj,chain_group,script_registry_item) {
-			var script = script_registry_item.elem || document.createElement("script");
-			if (script_obj.type) script.type = script_obj.type;
-			if (script_obj.charset) script.charset = script_obj.charset;
-			create_script_load_listener(script,script_registry_item,"finished",function(){
-				script_executed(script_obj,chain_group,script_registry_item);
-				script = null;
-			});
-			
-			// script elem was real-preloaded
-			if (script_registry_item.elem) {
-				append_to.insertBefore(script,append_to.firstChild);
-				script_registry_item.elem = null;
-			}
-			// script was XHR preloaded
-			else if (script_registery_item.text) {
-				script.text = script_registry_item.text;
-				append_to.insertBefore(script,append_to.firstChild);
-			}
-			// script was cache-preloaded
-			else {
-				script.src = script_obj.src;
-				append_to.insertBefore(script,append_to.firstChild);
-			}
-		}
-
-		function request_script(chain_opts,script_obj,script_registry_item,preload,onload) {
-			setTimeout(function(){
-				if ("item" in append_to) { // check if ref is still a live node list
-					if (!append_to[0]) { // append_to node not yet ready
-						setTimeout(arguments.callee,25); // try again in a little bit -- note, will recall the anonymous function in the outer setTimeout, not the parent `request_script()`
-						return;
-					}
-					append_to = append_to[0]; // reassign from live node list ref to pure node ref -- avoids nasty IE bug where changes to DOM invalidate live node lists
-				}
-				var script = document.createElement("script");
-				if (script_obj.type) script.type = script_obj.type;
-				if (script_obj.charset) script.charset = script_obj.charset;
-				
-				// no preloading, just normal script element
-				if (!preload) {
-					create_script_load_listener(script,script_registry_item,"finished",onload);
-					script.src = script_obj.src;
-					append_to.insertBefore(script,append_to.firstChild);
-				}
-				// real script preloading
-				else if (script_preload) {
-					script_registry_item.elem = script;
-					if (explicit_script_preloading) { // Zakas style preloading (aka, explicit preloading)
-						script.preload = true;
-						script.onpreload = onload;
-					}
-					else {
-						script.onreadystatechange = function(){
-							if (script.readyState == "loaded") onload();
-							script.onreadystatechange = null;
-						};
-					}
-					script.src = script_obj.src;
-					// NOTE: no append to DOM yet, appending will happen when ready to execute
-				}
-				// use async=false parallel-load-serial-execute
-				else if (script_async) {	
-					script.async = false;
-					create_script_load_listener(script,script_registry_item,"finished",onload);
-					script.src = script_obj.src;
-					append_to.insertBefore(script,append_to.firstChild);
-				}
-				// same-domain, so use XHR+script injection
-				else if (same_domain(script_obj.src) && chain_opts[_UseLocalXHR]) {
-					var xhr = XMLHttpRequest ? new XMLHttpRequest() : (ActiveXObject ? new ActiveXObject("Microsoft.XMLHTTP") : null);
-					if (!xhr) {
-						chain_opts[_UseLocalXHR] = false; // can't use XHR for some reason, so don't try anymore
-						return request_script(chain_opts,script_registry_item,onload);
-					}
-					xhr.onreadystatechange = function() {
-						if (xhr.readyState === 4) {
-							xhr.onreadystatechange = function(){}; // fix a memory leak in IE
-							script_registry_item.text = xhr.responseText;
-							onload();
-						}
-					};
-					xhr.open("GET",src);
-					xhr.send("");
-				}
-				// as a last resort, use cache-preloading
-				else {
-					script.type = "text/cache-script";
-					create_script_load_listener(script,script_registry_item,"ready",function() {
-						append_to.removeChild(script);
-						onload();
-					});
-					script.src = script_obj.src;
-					append_to.insertBefore(script,append_to.firstChild);
-				}
-			},0);
-		}
-		
+		// process the script request setup
 		function do_script(chain_opts,script_obj,chain_group) {
-			var script_registry_item,
-				script_registry_items,
-				ready_cb = function(){ script_obj.ready_cb(script_obj,chain_group,function(){ execute_preloaded_script(script_obj,chain_group,script_registry_item); }); },
+			var registry_item,
+				registry_items,
+				ready_cb = function(){ script_obj.ready_cb(script_obj,chain_group,function(){ execute_preloaded_script(script_obj,chain_group,registry_item); }); },
 				finished_cb = function(){ script_obj.finished_cb(script_obj,chain_group); }
 			;
-
+	
 			script_obj.src = canonical_uri(script_obj.src,chain_opts[_BasePath]);
-
-			if (!script_registry[script_obj.src]) script_registry[script_obj.src] = [];
-			script_registry_items = script_registry[script_obj.src];
-
+	
+			if (!registry[script_obj.src]) registry[script_obj.src] = [];
+			registry_items = registry[script_obj.src];
+	
 			// allowing duplicates, or is this the first recorded load of this script?
-			if (chain_opts[_AllowDuplicates] || script_registry_items.length == 0) {
-				script_registry_item = script_registry_items[script_registry_items.length] = {
+			if (chain_opts[_AllowDuplicates] || registry_items.length == 0) {
+				registry_item = registry_items[registry_items.length] = {
 					ready:false,
 					finished:false,
 					ready_listeners:[ready_cb],
 					finished_listeners:[finished_cb]
 				};
-
-				request_script(chain_opts,script_obj,script_registry_item,chain_group.preload,
+	
+				request_script(chain_opts,script_obj,chain_group,registry_item,
 					(chain_group.preload) ? function(){
-						script_registry_item.ready = true;
-						for (var i=0; i<script_registry_item.ready_listeners.length; i++) {
-							setTimeout(script_registry_item.ready_listeners[i],0);
+						registry_item.ready = true;
+						for (var i=0; i<registry_item.ready_listeners.length; i++) {
+							setTimeout(registry_item.ready_listeners[i],0);
 						}
-						script_registry_item.ready_listeners = [];
+						registry_item.ready_listeners = [];
 					} :
-					script_executed
+					function(){ script_executed(script_obj,chain_group,registry_item); }
 				);
 			}
 			else {
-				script_registry_item = script_registry[script_obj.src][0];
-				if (script_registry_item.finished) {
+				registry_item = registry[script_obj.src][0];
+				if (registry_item.finished) {
 					setTimeout(finished_cb,0);
 				}
-				else if (script_registry.ready) {
+				else if (registry.ready) {
 					setTimeout(ready_cb,0);
 				}
 				else {
-					script_registry_item.ready_listeners.push(ready_cb);
-					script_registry_item.finished_listeners.push(finished_cb);
+					registry_item.ready_listeners.push(ready_cb);
+					registry_item.finished_listeners.push(finished_cb);
 				}
 			}
 		}
 
-		// creates a closure for each separate $LAB chain, to keep state cleanly separated between chains
+		// creates a closure for each separate chain spawned from this $LAB instance, to keep state cleanly separated between chains
 		function create_chain() {
 			var chainedAPI,
 				chain_opts = merge_objs(global_defaults,{}),
@@ -280,14 +282,14 @@
 			;
 			
 			// called when a script has finished preloading
-			function script_ready(script_obj,chain_group,exec_trigger) {
+			function chain_script_ready(script_obj,chain_group,exec_trigger) {
 				script_obj.ready = true;
 				script_obj.exec_trigger = exec_trigger;
 				advance_exec_cursor(); // will only check for 'ready' scripts to be executed
 			}
 
 			// called when a script has finished executing
-			function script_executed(script_obj,chain_group) {
+			function chain_script_executed(script_obj,chain_group) {
 				script_obj.ready = script_obj.finished = true;
 				script_obj.exec_trigger = null;
 				if (check_chain_group_complete(chain_group)) {
@@ -339,9 +341,9 @@
 								if (typeof script_obj == "string") script_obj = {src:script_obj};
 								script_obj = merge_objs(script_obj,{
 									ready:false,
-									ready_cb:script_ready,
+									ready_cb:chain_script_ready,
 									finished:false,
-									finished_cb:script_executed
+									finished_cb:chain_script_executed
 								});
 								group.finished = false;
 								group.scripts.push(script_obj);
@@ -418,7 +420,7 @@
 			},
 			// create another clean instance of $LAB
 			sandbox:function(){
-				return sandbox();
+				return create_sandbox();
 			}
 		};
 
@@ -426,6 +428,6 @@
 	}
 
 	// create the main instance of $LAB
-	global.$LAB = sandbox();
+	global.$LAB = create_sandbox();
 
 })(this);
