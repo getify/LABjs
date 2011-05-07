@@ -7,7 +7,7 @@
 	var _$LAB = global.$LAB,
 	
 		// constants for the valid keys of the options object
-		_UseLocalXHR = "UseLocalXHR",			
+		_UseLocalXHR = "UseLocalXHR",
 		_AlwaysPreserveOrder = "AlwaysPreserveOrder",
 		_AllowDuplicates = "AllowDuplicates",
 		_BasePath = "BasePath",
@@ -66,6 +66,7 @@
 		for (var k in source) { if (source.hasOwnProperty(k)) {
 			target[k] = source[k]; // TODO: does this need to be recursive for our purposes?
 		}}
+		return target;
 	}
 
 	// does the chain group have any ready-to-execute scripts?
@@ -91,9 +92,9 @@
 	}
 	
 	// creates a script load listener
-	function create_script_load_listener(elem,script_registry_entry,flag,onload) {
+	function create_script_load_listener(elem,script_registry_item,flag,onload) {
 		elem.onload = elem.onreadystatechange = function() {
-			if ((elem.readyState && elem.readyState != "complete" && elem.readyState != "loaded") || script_registry_entry[flag]) return;
+			if ((elem.readyState && elem.readyState != "complete" && elem.readyState != "loaded") || script_registry_item[flag]) return;
 			elem.onload = elem.onreadystatechange = null;
 			onload();
 		};
@@ -127,7 +128,7 @@
 			var script = script_registry_item.elem || document.createElement("script");
 			if (script_obj.type) script.type = script_obj.type;
 			if (script_obj.charset) script.charset = script_obj.charset;
-			create_script_load_listener(script,script_registry_entry,"finished",function(){
+			create_script_load_listener(script,script_registry_item,"finished",function(){
 				script_executed(script_obj,chain_group,script_registry_item);
 				script = null;
 			});
@@ -164,7 +165,7 @@
 				
 				// no preloading, just normal script element
 				if (!preload) {
-					create_script_load_listener(script,script_registry_entry,"finished",onload);
+					create_script_load_listener(script,script_registry_item,"finished",onload);
 					script.src = script_obj.src;
 					append_to.insertBefore(script,append_to.firstChild);
 				}
@@ -187,7 +188,7 @@
 				// use async=false parallel-load-serial-execute
 				else if (script_async) {	
 					script.async = false;
-					create_script_load_listener(script,script_registry_entry,"finished",onload);
+					create_script_load_listener(script,script_registry_item,"finished",onload);
 					script.src = script_obj.src;
 					append_to.insertBefore(script,append_to.firstChild);
 				}
@@ -211,7 +212,7 @@
 				// as a last resort, use cache-preloading
 				else {
 					script.type = "text/cache-script";
-					create_script_load_listener(script,script_registry_entry,"ready",function() {
+					create_script_load_listener(script,script_registry_item,"ready",function() {
 						append_to.removeChild(script);
 						onload();
 					});
@@ -321,7 +322,7 @@
 					scripts_currently_loading = true;
 					for (var i=0; i<arguments.length; i++) {
 						(function(script_obj,script_list){
-							if (is_array(script_obj)) {
+							if (!is_array(script_obj)) {
 								script_list = [script_obj];
 							}
 							for (var j=0; j<script_list.length; j++) {
@@ -367,7 +368,14 @@
 				}
 			};
 
-			return chainedAPI;
+			return {
+				script:chainedAPI.script, 
+				wait:chainedAPI.wait, 
+				setOptions:function(opts){
+					merge_objs(opts,chain_opts);
+					return chainedAPI;
+				}
+			};
 		}
 
 		instanceAPI = {
