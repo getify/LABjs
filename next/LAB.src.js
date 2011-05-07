@@ -173,7 +173,7 @@
 				// NOTE: no append to DOM yet, appending will happen when ready to execute
 			}
 			// use async=false parallel-load-serial-execute
-			else if (script_async) {	
+			else if (script_async) {
 				script.async = false;
 				create_script_load_listener(script,registry_item,"finished",onload);
 				script.src = script_obj.src;
@@ -247,7 +247,7 @@
 				};
 	
 				request_script(chain_opts,script_obj,chain_group,registry_item,
-					(chain_group.preload) ? function(){
+					(chain_group.preload && !script_async) ? function(){
 						registry_item.ready = true;
 						for (var i=0; i<registry_item.ready_listeners.length; i++) {
 							setTimeout(registry_item.ready_listeners[i],0);
