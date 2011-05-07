@@ -316,12 +316,17 @@
 					group = false;
 				}
 			}
+			
+			// setup next chain script group
+			function init_script_chain_group() {
+				if (!group || !group.scripts) {
+					chain.push(group = {scripts:[],finished:true,preload:use_preloading&&scripts_currently_loading});
+				}
+			}
 
 			chainedAPI = {
 				script:function(){
-					if (!group || !group.scripts) {
-						chain.push(group = {scripts:[],finished:true,preload:use_preloading&&scripts_currently_loading});
-					}
+					init_script_chain_group();
 					scripts_currently_loading = true;
 					for (var i=0; i<arguments.length; i++) {
 						(function(script_obj,script_list){
@@ -329,7 +334,9 @@
 								script_list = [script_obj];
 							}
 							for (var j=0; j<script_list.length; j++) {
+								init_script_chain_group();
 								script_obj = script_list[j];
+								if (!script_obj) continue;
 								
 								if (is_func(script_obj)) script_obj = script_obj();
 								if (is_array(script_obj)) {
@@ -414,7 +421,7 @@
 				}
 				return $L;
 			},
-			// rollback `[global].$LAB` to what it was before this file was loaded, return this instance of $LAB
+			// rollback `[global].$LAB` to what it was before this file was loaded, the return this current instance of $LAB
 			noConflict:function(){
 				global.$LAB = _$LAB;
 				return instanceAPI;
