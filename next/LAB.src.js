@@ -23,8 +23,8 @@
 		// feature sniffs (yay!)
 		test_script_elem = document.createElement("script"),
 		script_async = test_script_elem.async === true, // http://wiki.whatwg.org/wiki/Dynamic_Script_Execution_Order
-		explicit_script_preloading = typeof test_script_elem.preload == "boolean", // http://wiki.whatwg.org/wiki/Script_Execution_Control#Proposal_1_.28Nicholas_Zakas.29
-		script_preload = explicit_script_preloading || (test_script_elem.readyState && test_script_elem.readyState == "uninitialized") // will a script preload with `src` set before DOM append?
+		explicit_script_preload = typeof test_script_elem.preload == "boolean", // http://wiki.whatwg.org/wiki/Script_Execution_Control#Proposal_1_.28Nicholas_Zakas.29
+		script_preload = explicit_script_preload || (test_script_elem.readyState && test_script_elem.readyState == "uninitialized") // will a script preload with `src` set before DOM append?
 	;
 
 	// test for function
@@ -124,7 +124,7 @@
 			registry_item.elem = null;
 		}
 		// script was XHR preloaded
-		else if (script_registery_item.text) {
+		else if (registry_item.text) {
 			script.text = registry_item.text;
 			append_to.insertBefore(script,append_to.firstChild);
 		}
@@ -151,6 +151,7 @@
 			
 			// no preloading, just normal script element
 			if (!chain_group.preload) {
+				if (script_async) script.async = false;
 				create_script_load_listener(script,registry_item,"finished",onload);
 				script.src = script_obj.src;
 				append_to.insertBefore(script,append_to.firstChild);
@@ -158,7 +159,7 @@
 			// real script preloading
 			else if (script_preload) {
 				registry_item.elem = script;
-				if (explicit_script_preloading) { // Zakas style preloading (aka, explicit preloading)
+				if (explicit_script_preload) { // Zakas style preloading (aka, explicit preloading)
 					script.preload = true;
 					script.onpreload = onload;
 				}
