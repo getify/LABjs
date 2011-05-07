@@ -22,7 +22,7 @@
 
 		// feature sniffs (yay!)
 		test_script_elem = document.createElement("script"),
-		script_async = test_script_elem.async === true, // http://wiki.whatwg.org/wiki/Dynamic_Script_Execution_Order
+		script_ordered_async = test_script_elem.async === true, // http://wiki.whatwg.org/wiki/Dynamic_Script_Execution_Order
 		explicit_script_preload = typeof test_script_elem.preload == "boolean", // http://wiki.whatwg.org/wiki/Script_Execution_Control#Proposal_1_.28Nicholas_Zakas.29
 		script_preload = explicit_script_preload || (test_script_elem.readyState && test_script_elem.readyState == "uninitialized") // will a script preload with `src` set before DOM append?
 	;
@@ -151,7 +151,7 @@
 			
 			// no preloading, just normal script element
 			if (!chain_group.preload) {
-				if (script_async) script.async = false;
+				if (script_ordered_async) script.async = false;
 				create_script_load_listener(script,registry_item,"finished",onload);
 				script.src = script_obj.src;
 				append_to.insertBefore(script,append_to.firstChild);
@@ -173,7 +173,7 @@
 				// NOTE: no append to DOM yet, appending will happen when ready to execute
 			}
 			// use async=false parallel-load-serial-execute
-			else if (script_async) {
+			else if (script_ordered_async) {
 				script.async = false;
 				create_script_load_listener(script,registry_item,"finished",onload);
 				script.src = script_obj.src;
@@ -212,7 +212,7 @@
 	// create a clean instance of $LAB
 	function create_sandbox() {
 		var global_defaults = {},
-			use_preloading = true,
+			use_preloading = !script_ordered_async && (script_preload || !opera_or_gecko),
 			queue = [],
 			registry = {},
 			instanceAPI
@@ -231,7 +231,7 @@
 				ready_cb = function(){ script_obj.ready_cb(script_obj,chain_group,function(){ execute_preloaded_script(script_obj,chain_group,registry_item); }); },
 				finished_cb = function(){ script_obj.finished_cb(script_obj,chain_group); }
 			;
-	
+			
 			script_obj.src = canonical_uri(script_obj.src,chain_opts[_BasePath]);
 	
 			if (!registry[script_obj.src]) registry[script_obj.src] = [];
@@ -247,7 +247,7 @@
 				};
 	
 				request_script(chain_opts,script_obj,chain_group,registry_item,
-					(chain_group.preload && !script_async) ? function(){
+					(chain_group.preload) ? function(){
 						registry_item.ready = true;
 						for (var i=0; i<registry_item.ready_listeners.length; i++) {
 							setTimeout(registry_item.ready_listeners[i],0);
@@ -320,7 +320,7 @@
 			chainedAPI = {
 				script:function(){
 					if (!group || !group.scripts) {
-						chain.push(group = {scripts:[],finished:true,preload:scripts_currently_loading});
+						chain.push(group = {scripts:[],finished:true,preload:use_preloading&&scripts_currently_loading});
 					}
 					scripts_currently_loading = true;
 					for (var i=0; i<arguments.length; i++) {
