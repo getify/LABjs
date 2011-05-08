@@ -341,9 +341,9 @@
 							for (var j=0; j<script_list.length; j++) {
 								init_script_chain_group();
 								script_obj = script_list[j];
-								if (!script_obj) continue;
 								
 								if (is_func(script_obj)) script_obj = script_obj();
+								if (!script_obj) continue;
 								if (is_array(script_obj)) {
 									var splice_args = [].slice.call(script_obj);
 									splice_args.push(j,1);
@@ -377,7 +377,7 @@
 					}
 					else group = false;
 					
-					if (is_func(chain[exec_cursor])) advance_exec_cursor();
+					advance_exec_cursor();
 					
 					return chainedAPI;
 				}
