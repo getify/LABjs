@@ -26,7 +26,7 @@
 		explicit_script_preload = typeof test_script_elem.preload == "boolean", // http://wiki.whatwg.org/wiki/Script_Execution_Control#Proposal_1_.28Nicholas_Zakas.29
 		script_preload = explicit_script_preload || (test_script_elem.readyState && test_script_elem.readyState == "uninitialized") // will a script preload with `src` set before DOM append?
 	;
-
+	
 	// test for function
 	function is_func(func) { return Object.prototype.toString.call(func) == "[object Function]"; }
 
@@ -164,7 +164,7 @@
 				xhr.onreadystatechange = function() {
 					if (xhr.readyState === 4) {
 						xhr.onreadystatechange = function(){}; // fix a memory leak in IE
-						registry_item.text = xhr.responseText;
+						registry_item.text = xhr.responseText + "\n//@ sourceURL=" + script_obj.src; // http://blog.getfirebug.com/2009/08/11/give-your-eval-a-name-with-sourceurl/
 						onload();
 					}
 				};
@@ -267,11 +267,7 @@
 				if (registry_item.finished) {
 					setTimeout(finished_cb,0);
 				}
-				else if (registry.ready) {
-					setTimeout(ready_cb,0);
-				}
 				else {
-					registry_item.ready_listeners.push(ready_cb);
 					registry_item.finished_listeners.push(finished_cb);
 				}
 			}
