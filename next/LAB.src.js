@@ -10,6 +10,7 @@
 		_UseLocalXHR = "UseLocalXHR",
 		_AlwaysPreserveOrder = "AlwaysPreserveOrder",
 		_AllowDuplicates = "AllowDuplicates",
+		_CacheBust = "CacheBust",
 		_BasePath = "BasePath",
 		
 		// stateless variables used across all $LAB instances
@@ -120,7 +121,9 @@
 				}
 				append_to = append_to[0]; // reassign from live node list ref to pure node ref -- avoids nasty IE bug where changes to DOM invalidate live node lists
 			}
-			var script = document.createElement("script");
+			var script = document.createElement("script"), 
+				src = script_obj.real_src = script_obj.src + (chain_opts[_CacheBust] ? (/\?.*$/.test(script_obj.src) ? "&_" : "?_") + ~~(Math.random()*1E9) + "=" : "")
+			;
 			if (script_obj.type) script.type = script_obj.type;
 			if (script_obj.charset) script.charset = script_obj.charset;
 			
@@ -128,7 +131,7 @@
 			if (!chain_group.preload) {
 				if (script_ordered_async) script.async = false;
 				create_script_load_listener(script,registry_item,"finished",onload);
-				script.src = script_obj.src;
+				script.src = src;
 				append_to.insertBefore(script,append_to.firstChild);
 			}
 			// real script preloading
@@ -144,18 +147,18 @@
 						script.onreadystatechange = null;
 					};
 				}
-				script.src = script_obj.src;
+				script.src = src;
 				// NOTE: no append to DOM yet, appending will happen when ready to execute
 			}
 			// use async=false parallel-load-serial-execute
 			else if (script_ordered_async) {
 				script.async = false;
 				create_script_load_listener(script,registry_item,"finished",onload);
-				script.src = script_obj.src;
+				script.src = src;
 				append_to.insertBefore(script,append_to.firstChild);
 			}
 			// same-domain, so use XHR+script injection
-			else if (same_domain(script_obj.src) && chain_opts[_UseLocalXHR]) {
+			else if (same_domain(src) && chain_opts[_UseLocalXHR]) {
 				var xhr = XMLHttpRequest ? new XMLHttpRequest() : (ActiveXObject ? new ActiveXObject("Microsoft.XMLHTTP") : null);
 				if (!xhr) {
 					global_defaults[_UseLocalXHR] = chain_opts[_UseLocalXHR] = false; // can't use XHR for some reason, so don't try anymore
@@ -164,7 +167,7 @@
 				xhr.onreadystatechange = function() {
 					if (xhr.readyState === 4) {
 						xhr.onreadystatechange = function(){}; // fix a memory leak in IE
-						registry_item.text = xhr.responseText + "\n//@ sourceURL=" + script_obj.src; // http://blog.getfirebug.com/2009/08/11/give-your-eval-a-name-with-sourceurl/
+						registry_item.text = xhr.responseText + "\n//@ sourceURL=" + src; // http://blog.getfirebug.com/2009/08/11/give-your-eval-a-name-with-sourceurl/
 						onload();
 					}
 				};
@@ -178,7 +181,7 @@
 					append_to.removeChild(script);
 					onload();
 				});
-				script.src = script_obj.src;
+				script.src = src;
 				append_to.insertBefore(script,append_to.firstChild);
 			}
 		},0);
@@ -197,6 +200,7 @@
 		global_defaults[_UseLocalXHR] = true;
 		global_defaults[_AlwaysPreserveOrder] = false;
 		global_defaults[_AllowDuplicates] = false;
+		global_defaults[_CacheBust] = false;
 		global_defaults[_BasePath] = "";
 
 		// execute a script that has been preloaded already
@@ -214,19 +218,17 @@
 			
 			// script elem was real-preloaded
 			if (registry_item.elem) {
-				append_to.insertBefore(script,append_to.firstChild);
 				registry_item.elem = null;
 			}
 			// script was XHR preloaded
 			else if (registry_item.text) {
 				script.text = registry_item.text;
-				append_to.insertBefore(script,append_to.firstChild);
 			}
 			// script was cache-preloaded
 			else {
-				script.src = script_obj.src;
-				append_to.insertBefore(script,append_to.firstChild);
+				script.src = script_obj.real_src;
 			}
+			append_to.insertBefore(script,append_to.firstChild);
 		}
 	
 		// process the script request setup
@@ -236,9 +238,9 @@
 				ready_cb = function(){ script_obj.ready_cb(script_obj,chain_group,function(){ execute_preloaded_script(chain_opts,script_obj,chain_group,registry_item); }); },
 				finished_cb = function(){ script_obj.finished_cb(script_obj,chain_group); }
 			;
-			
+
 			script_obj.src = canonical_uri(script_obj.src,chain_opts[_BasePath]);
-	
+
 			if (!registry[script_obj.src]) registry[script_obj.src] = {items:[],executed:false};
 			registry_items = registry[script_obj.src].items;
 
