@@ -11,6 +11,7 @@
 		_AlwaysPreserveOrder = "AlwaysPreserveOrder",
 		_AllowDuplicates = "AllowDuplicates",
 		_CacheBust = "CacheBust",
+		/*!START_DEBUG*/_Debug = "Debug",/*!END_DEBUG*/
 		_BasePath = "BasePath",
 		
 		// stateless variables used across all $LAB instances
@@ -21,13 +22,28 @@
 		// inferences... ick, but still necessary
 		opera_or_gecko = (global.opera && Object.prototype.toString.call(global.opera) == "[object Opera]") || ("MozAppearance" in document.documentElement.style),
 
+/*!START_DEBUG*/
+		// console.log() and console.error() wrappers
+		log_msg = function(){}, 
+		log_error = log_msg,
+/*!END_DEBUG*/
+		
 		// feature sniffs (yay!)
 		test_script_elem = document.createElement("script"),
 		script_ordered_async = test_script_elem.async === true, // http://wiki.whatwg.org/wiki/Dynamic_Script_Execution_Order
 		explicit_script_preload = typeof test_script_elem.preload == "boolean", // http://wiki.whatwg.org/wiki/Script_Execution_Control#Proposal_1_.28Nicholas_Zakas.29
 		script_preload = explicit_script_preload || (test_script_elem.readyState && test_script_elem.readyState == "uninitialized") // will a script preload with `src` set before DOM append?
 	;
-	
+
+/*!START_DEBUG*/
+	// define console wrapper functions if applicable
+	if (global.console && global.console.log) {
+		if (!global.console.error) global.console.error = global.console.log;
+		log_msg = function(msg) { global.console.log(msg); };
+		log_error = function(msg,err) { global.console.error(msg,err); };
+	}
+/*!END_DEBUG*/
+
 	// test for function
 	function is_func(func) { return Object.prototype.toString.call(func) == "[object Function]"; }
 
@@ -113,22 +129,27 @@
 
 	// make the request for a script
 	function request_script(chain_opts,script_obj,chain_group,registry_item,onload) {
+		// setTimeout() "yielding" prevents some weird race/crash conditions in older browsers
 		setTimeout(function(){
-			if ("item" in append_to) { // check if ref is still a live node list
-				if (!append_to[0]) { // append_to node not yet ready
-					setTimeout(arguments.callee,25); // try again in a little bit -- note, will recall the anonymous function in the outer setTimeout, not the parent `request_script()`
+			// don't proceed until `append_to` is ready to append to
+			if ("item" in append_to) { // check if `append_to` ref is still a live node list
+				if (!append_to[0]) { // `append_to` node not yet ready
+					// try again in a little bit -- note: will re-call the anonymous function in the outer setTimeout, not the parent `request_script()`
+					setTimeout(arguments.callee,25);
 					return;
 				}
-				append_to = append_to[0]; // reassign from live node list ref to pure node ref -- avoids nasty IE bug where changes to DOM invalidate live node lists
+				// reassign from live node list ref to pure node ref -- avoids nasty IE bug where changes to DOM invalidate live node lists
+				append_to = append_to[0];
 			}
 			var script = document.createElement("script"), 
-				src = script_obj.real_src = script_obj.src + (chain_opts[_CacheBust] ? (/\?.*$/.test(script_obj.src) ? "&_" : "?_") + ~~(Math.random()*1E9) + "=" : "")
+				src = script_obj.real_src
 			;
 			if (script_obj.type) script.type = script_obj.type;
 			if (script_obj.charset) script.charset = script_obj.charset;
 			
 			// no preloading, just normal script element
 			if (!chain_group.preload && !script_ordered_async) {
+				/*!START_DEBUG*/if (chain_opts[_Debug]) log_msg("start script load: "+src);/*!END_DEBUG*/
 				if (script_ordered_async) script.async = false;
 				create_script_load_listener(script,registry_item,"finished",onload);
 				script.src = src;
@@ -136,6 +157,7 @@
 			}
 			// real script preloading
 			else if (script_preload) {
+				/*!START_DEBUG*/if (chain_opts[_Debug]) log_msg("start script preload: "+src);/*!END_DEBUG*/
 				registry_item.elem = script;
 				if (explicit_script_preload) { // Zakas style preloading (aka, explicit preloading)
 					script.preload = true;
@@ -150,8 +172,9 @@
 				script.src = src;
 				// NOTE: no append to DOM yet, appending will happen when ready to execute
 			}
-			// use async=false parallel-load-serial-execute
+			// use async=false parallel-load-serial-execute http://wiki.whatwg.org/wiki/Dynamic_Script_Execution_Order
 			else if (script_ordered_async) {
+				/*!START_DEBUG*/if (chain_opts[_Debug]) log_msg("start script load (ordered async): "+src);/*!END_DEBUG*/
 				script.async = false;
 				create_script_load_listener(script,registry_item,"finished",onload);
 				script.src = src;
@@ -164,18 +187,20 @@
 					global_defaults[_UseLocalXHR] = chain_opts[_UseLocalXHR] = false; // can't use XHR for some reason, so don't try anymore
 					return request_script(chain_opts,registry_item,onload);
 				}
+				/*!START_DEBUG*/if (chain_opts[_Debug]) log_msg("start script preload (xhr): "+src);/*!END_DEBUG*/
 				xhr.onreadystatechange = function() {
-					if (xhr.readyState === 4) {
+					if (xhr.readyState == 4) {
 						xhr.onreadystatechange = function(){}; // fix a memory leak in IE
 						registry_item.text = xhr.responseText + "\n//@ sourceURL=" + src; // http://blog.getfirebug.com/2009/08/11/give-your-eval-a-name-with-sourceurl/
 						onload();
 					}
 				};
 				xhr.open("GET",src);
-				xhr.send("");
+				xhr.send();
 			}
 			// as a last resort, use cache-preloading
 			else {
+				/*!START_DEBUG*/if (chain_opts[_Debug]) log_msg("start script preload (cache): "+src);/*!END_DEBUG*/
 				script.type = "text/cache-script";
 				create_script_load_listener(script,registry_item,"ready",function() {
 					append_to.removeChild(script);
@@ -195,12 +220,13 @@
 			registry = {},
 			instanceAPI
 		;
-
+		
 		// global defaults
 		global_defaults[_UseLocalXHR] = true;
 		global_defaults[_AlwaysPreserveOrder] = false;
 		global_defaults[_AllowDuplicates] = false;
 		global_defaults[_CacheBust] = false;
+		/*!START_DEBUG*/global_defaults[_Debug] = false;/*!END_DEBUG*/
 		global_defaults[_BasePath] = "";
 
 		// execute a script that has been preloaded already
@@ -248,6 +274,9 @@
 			;
 
 			script_obj.src = canonical_uri(script_obj.src,chain_opts[_BasePath]);
+			script_obj.real_src = script_obj.src + 
+				// append cache-bust param to URL?
+				(chain_opts[_CacheBust] ? (/\?.*$/.test(script_obj.src) ? "&_" : "?_") + ~~(Math.random()*1E9) + "=" : "");
 
 			if (!registry[script_obj.src]) registry[script_obj.src] = {items:[],finished:false};
 			registry_items = registry[script_obj.src].items;
@@ -295,6 +324,7 @@
 			
 			// called when a script has finished preloading
 			function chain_script_ready(script_obj,chain_group,exec_trigger) {
+				/*!START_DEBUG*/if (chain_opts[_Debug]) log_msg("script preload finished: "+script_obj.real_src);/*!END_DEBUG*/
 				script_obj.ready = true;
 				script_obj.exec_trigger = exec_trigger;
 				advance_exec_cursor(); // will only check for 'ready' scripts to be executed
@@ -302,6 +332,7 @@
 
 			// called when a script has finished executing
 			function chain_script_executed(script_obj,chain_group) {
+				/*!START_DEBUG*/if (chain_opts[_Debug]) log_msg("script execution finished: "+script_obj.real_src);/*!END_DEBUG*/
 				script_obj.ready = script_obj.finished = true;
 				script_obj.exec_trigger = null;
 				if (check_chain_group_complete(chain_group)) {
@@ -313,7 +344,10 @@
 			function advance_exec_cursor() {
 				while (exec_cursor < chain.length) {
 					if (is_func(chain[exec_cursor])) {
-						try { chain[exec_cursor](); } catch (err) { } // TODO: wire up error logging
+						/*!START_DEBUG*/if (chain_opts[_Debug]) log_msg("$LAB.wait() executing: "+chain[exec_cursor]);/*!END_DEBUG*/
+						try { chain[exec_cursor](); } catch (err) {
+							/*!START_DEBUG*/if (chain_opts[_Debug]) log_error("$LAB.wait() error caught: ",err);/*!END_DEBUG*/
+						}
 					}
 					else if (!chain[exec_cursor].finished) {
 						if (check_chain_group_scripts_ready(chain[exec_cursor])) continue;
@@ -335,7 +369,9 @@
 				}
 			}
 
+			// API for $LAB chains
 			chainedAPI = {
+				// start loading one or more scripts
 				script:function(){
 					init_script_chain_group();
 					scripts_currently_loading = true;
@@ -374,6 +410,7 @@
 					}
 					return chainedAPI;
 				},
+				// force LABjs to pause in execution at this point in the chain, until the execution thus far finishes, before proceeding
 				wait:function(){
 					if (arguments.length > 0) {
 						for (var i=0; i<arguments.length; i++) {
@@ -389,6 +426,7 @@
 				}
 			};
 
+			// the first chain link API (includes `setOptions` only this first time)
 			return {
 				script:chainedAPI.script, 
 				wait:chainedAPI.wait, 
@@ -399,7 +437,9 @@
 			};
 		}
 
+		// API for each initial $LAB instance (before chaining starts)
 		instanceAPI = {
+			// main API functions
 			setGlobalDefaults:function(opts){
 				merge_objs(opts,global_defaults);
 				return instanceAPI;
@@ -413,6 +453,7 @@
 			wait:function(){
 				return create_chain().wait.apply(null,arguments);
 			},
+
 			// built-in queuing for $LAB `script()` and `wait()` calls
 			// useful for building up a chain programmatically across various script locations, and simulating
 			// execution of the chain
@@ -432,11 +473,13 @@
 				}
 				return $L;
 			},
+
 			// rollback `[global].$LAB` to what it was before this file was loaded, the return this current instance of $LAB
 			noConflict:function(){
 				global.$LAB = _$LAB;
 				return instanceAPI;
 			},
+
 			// create another clean instance of $LAB
 			sandbox:function(){
 				return create_sandbox();
