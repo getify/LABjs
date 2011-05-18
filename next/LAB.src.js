@@ -128,7 +128,7 @@
 			if (script_obj.charset) script.charset = script_obj.charset;
 			
 			// no preloading, just normal script element
-			if (!chain_group.preload) {
+			if (!chain_group.preload && !script_ordered_async) {
 				if (script_ordered_async) script.async = false;
 				create_script_load_listener(script,registry_item,"finished",onload);
 				script.src = src;
