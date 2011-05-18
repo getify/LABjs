@@ -205,16 +205,18 @@
 
 		// execute a script that has been preloaded already
 		function execute_preloaded_script(chain_opts,script_obj,chain_group,registry_item) {
-			if (registry[script_obj.src].executed) return;
-			if (!chain_opts[_AllowDuplicates]) registry[script_obj.src].executed = true;
+			function preload_execute_finished() {
+				script_executed(script_obj,chain_group,registry_item);
+				script = null;
+			}
+			
+			if (registry[script_obj.src].finished) return;
+			if (!chain_opts[_AllowDuplicates]) registry[script_obj.src].finished = true;
 			
 			var script = registry_item.elem || document.createElement("script");
 			if (script_obj.type) script.type = script_obj.type;
 			if (script_obj.charset) script.charset = script_obj.charset;
-			create_script_load_listener(script,registry_item,"finished",function(){
-				script_executed(script_obj,chain_group,registry_item);
-				script = null;
-			});
+			create_script_load_listener(script,registry_item,"finished",preload_execute_finished);
 			
 			// script elem was real-preloaded
 			if (registry_item.elem) {
@@ -222,6 +224,7 @@
 			}
 			// script was XHR preloaded
 			else if (registry_item.text) {
+				script.onload = script.onreadystatechange = null;	// script injection doesn't fire these events
 				script.text = registry_item.text;
 			}
 			// script was cache-preloaded
@@ -229,6 +232,11 @@
 				script.src = script_obj.real_src;
 			}
 			append_to.insertBefore(script,append_to.firstChild);
+
+			// manually fire execution callback for injected scripts, since events don't fire
+			if (registry_item.text) {
+				preload_execute_finished();
+			}
 		}
 	
 		// process the script request setup
@@ -241,7 +249,7 @@
 
 			script_obj.src = canonical_uri(script_obj.src,chain_opts[_BasePath]);
 
-			if (!registry[script_obj.src]) registry[script_obj.src] = {items:[],executed:false};
+			if (!registry[script_obj.src]) registry[script_obj.src] = {items:[],finished:false};
 			registry_items = registry[script_obj.src].items;
 
 			// allowing duplicates, or is this the first recorded load of this script?
