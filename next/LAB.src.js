@@ -492,4 +492,24 @@
 	// create the main instance of $LAB
 	global.$LAB = create_sandbox();
 
+
+	/* The following "hack" was suggested by Andrea Giammarchi and adapted from: http://webreflection.blogspot.com/2009/11/195-chars-to-help-lazy-loading.html
+	   NOTE: this hack only operates in FF and then only in versions where document.readyState is not present (FF < 3.6?).
+	   
+	   The hack essentially "patches" the **page** that LABjs is loaded onto so that it has a proper conforming document.readyState, so that if a script which does 
+	   proper and safe dom-ready detection is loaded onto a page, after dom-ready has passed, it will still be able to detect this state, by inspecting the now hacked 
+	   document.readyState property. The loaded script in question can then immediately trigger any queued code executions that were waiting for the DOM to be ready. 
+	   For instance, jQuery 1.4+ has been patched to take advantage of document.readyState, which is enabled by this hack. But 1.3.2 and before are **not** safe or 
+	   fixed by this hack, and should therefore **not** be lazy-loaded by script loader tools such as LABjs.
+	*/ 
+	(function(addEvent,domLoaded,handler){
+		if (document.readyState == null && document[addEvent]){
+			document.readyState = "loading";
+			document[addEvent](domLoaded,handler = function(){
+				document.removeEventListener(domLoaded,handler,false);
+				document.readyState = "complete";
+			},false);
+		}
+	})("addEventListener","DOMContentLoaded");
+
 })(this);
