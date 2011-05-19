@@ -53,9 +53,6 @@
 	// test for array
 	function is_array(arr) { return Object.prototype.toString.call(arr) == "[object Array]"; }
 
-	// test if script URL is on same domain as page or not
-	function same_domain(src) { return (canonical_uri(src,root_domain).indexOf(root_domain) == 0); }
-
 	// make script URL absolute/canonical
 	function canonical_uri(src,base_path) {
 		var protocol_relative_regex = /^\/\/[^\/]/, absolute_regex = /^\w+\:\/\//;
@@ -183,8 +180,8 @@
 				script.src = src;
 				append_to.insertBefore(script,append_to.firstChild);
 			}
-			// same-domain, so use XHR+script injection
-			else if (same_domain(src) && chain_opts[_UseLocalXHR]) {
+			// same-domain and XHR allowed, so use XHR+script injection
+			else if (src.indexOf(root_domain) == 0 && chain_opts[_UseLocalXHR]) {
 				var xhr = XMLHttpRequest ? new XMLHttpRequest() : (ActiveXObject ? new ActiveXObject("Microsoft.XMLHTTP") : null);
 				/*!START_DEBUG*/if (chain_opts[_Debug]) log_msg("start script preload (xhr): "+src);/*!END_DEBUG*/
 				xhr.onreadystatechange = function() {
