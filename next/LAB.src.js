@@ -54,7 +54,7 @@
 	function is_array(arr) { return Object.prototype.toString.call(arr) == "[object Array]"; }
 
 	// test if script URL is on same domain as page or not
-	function same_domain(src) { return (canonical_uri(src).indexOf(root_domain) == 0); }
+	function same_domain(src) { return (canonical_uri(src,root_domain).indexOf(root_domain) == 0); }
 
 	// make script URL absolute/canonical
 	function canonical_uri(src,base_path) {
