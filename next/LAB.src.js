@@ -18,6 +18,8 @@
 		root_page = /^[^?#]*\//.exec(location.href)[0],
 		root_domain = /^\w+\:\/\/\/?[^\/]+/.exec(root_page)[0],
 		append_to = document.head || document.getElementsByTagName("head"),
+		
+		disable_xhr = !(XMLHttpRequest || ActiveXObject),	// flag shared by all instances, for whether XHR failed or is invalid
 
 		// inferences... ick, but still necessary
 		opera_or_gecko = (global.opera && Object.prototype.toString.call(global.opera) == "[object Opera]") || ("MozAppearance" in document.documentElement.style),
@@ -42,6 +44,7 @@
 		log_msg = function(msg) { global.console.log(msg); };
 		log_error = function(msg,err) { global.console.error(msg,err); };
 	}
+	if (disable_xhr) log_msg("LABjs warning: XHR disabled after init failure.");
 /*!END_DEBUG*/
 
 	// test for function
@@ -183,10 +186,6 @@
 			// same-domain, so use XHR+script injection
 			else if (same_domain(src) && chain_opts[_UseLocalXHR]) {
 				var xhr = XMLHttpRequest ? new XMLHttpRequest() : (ActiveXObject ? new ActiveXObject("Microsoft.XMLHTTP") : null);
-				if (!xhr) {
-					global_defaults[_UseLocalXHR] = chain_opts[_UseLocalXHR] = false; // can't use XHR for some reason, so don't try anymore
-					return request_script(chain_opts,script_obj,chain_group,registry_item,onload);
-				}
 				/*!START_DEBUG*/if (chain_opts[_Debug]) log_msg("start script preload (xhr): "+src);/*!END_DEBUG*/
 				xhr.onreadystatechange = function() {
 					if (xhr.readyState == 4) {
@@ -222,7 +221,7 @@
 		;
 		
 		// global defaults
-		global_defaults[_UseLocalXHR] = true;
+		global_defaults[_UseLocalXHR] = !disable_xhr;
 		global_defaults[_AlwaysPreserveOrder] = false;
 		global_defaults[_AllowDuplicates] = false;
 		global_defaults[_CacheBust] = false;
@@ -432,6 +431,7 @@
 				wait:chainedAPI.wait, 
 				setOptions:function(opts){
 					merge_objs(opts,chain_opts);
+					chain_opts[_UseLocalXHR] = chain_opts[_UseLocalXHR] && !disable_xhr;
 					return chainedAPI;
 				}
 			};
@@ -442,6 +442,7 @@
 			// main API functions
 			setGlobalDefaults:function(opts){
 				merge_objs(opts,global_defaults);
+				global_defaults[_UseLocalXHR] = global_defaults[_UseLocalXHR] && !disable_xhr;
 				return instanceAPI;
 			},
 			setOptions:function(){
