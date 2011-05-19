@@ -185,7 +185,7 @@
 				var xhr = XMLHttpRequest ? new XMLHttpRequest() : (ActiveXObject ? new ActiveXObject("Microsoft.XMLHTTP") : null);
 				if (!xhr) {
 					global_defaults[_UseLocalXHR] = chain_opts[_UseLocalXHR] = false; // can't use XHR for some reason, so don't try anymore
-					return request_script(chain_opts,registry_item,onload);
+					return request_script(chain_opts,script_obj,chain_group,registry_item,onload);
 				}
 				/*!START_DEBUG*/if (chain_opts[_Debug]) log_msg("start script preload (xhr): "+src);/*!END_DEBUG*/
 				xhr.onreadystatechange = function() {
