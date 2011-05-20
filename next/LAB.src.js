@@ -99,15 +99,6 @@
 		return any_scripts_ready;
 	}
 
-	// is the chain group complete yet?
-	function check_chain_group_complete(chain_group) {
-		for (var i=0; i<chain_group.scripts.length; i++) {
-			if (!chain_group.scripts[i].finished) return false;
-		}
-		chain_group.finished = true;
-		return true;
-	}
-	
 	// creates a script load listener
 	function create_script_load_listener(elem,registry_item,flag,onload) {
 		elem.onload = elem.onreadystatechange = function() {
@@ -331,9 +322,13 @@
 				/*!START_DEBUG*/if (chain_opts[_Debug]) log_msg("script execution finished: "+script_obj.real_src);/*!END_DEBUG*/
 				script_obj.ready = script_obj.finished = true;
 				script_obj.exec_trigger = null;
-				if (check_chain_group_complete(chain_group)) {
-					advance_exec_cursor();
+				// check if chain group is all finished
+				for (var i=0; i<chain_group.scripts.length; i++) {
+					if (!chain_group.scripts[i].finished) return;
 				}
+				// chain_group is all finished if we get this far
+				chain_group.finished = true;
+				advance_exec_cursor();
 			}
 
 			// main driver for executing each part of the chain
