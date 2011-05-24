@@ -1,5 +1,5 @@
 /*! LAB.js (LABjs :: Loading And Blocking JavaScript)
-    v2.0a (c) Kyle Simpson
+    v2.0b (c) Kyle Simpson
     MIT License
 */
 
