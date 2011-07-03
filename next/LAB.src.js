@@ -1,5 +1,5 @@
 /*! LAB.js (LABjs :: Loading And Blocking JavaScript)
-    v2.0b2 (c) Kyle Simpson
+    v2.0b3 (c) Kyle Simpson
     MIT License
 */
 
@@ -55,27 +55,19 @@
 
 	// make script URL absolute/canonical
 	function canonical_uri(src,base_path) {
-		var protocol_relative_regex = /^\/\/[^\/]/, absolute_regex = /^\w+\:\/\//;
-
-		// if `src` is protocol-relative, prepend protocol
-		if (protocol_relative_regex.test(src)) {
+		var absolute_regex = /^\w+\:\/\//;
+		
+		// is `src` is protocol-relative (begins with // or ///), prepend protocol
+		if (/^\/\/\/?/.test(src)) {
 			src = location.protocol + src;
 		}
-		// otherwise, if `src` not an absolute URL
-		else if (!absolute_regex.test(src)) {
-			if (base_path != null) {
-				base_path = (absolute_regex.test(base_path)) ?
-					// `base_path` already absolute (canonical)
-					base_path :
-					// canonicalize `base_path` as well
-					// leading '/' in `base_path` means domain-relative path, otherwise page-relative path
-					canonical_uri(base_path,base_path[0] == "/" ? root_domain : root_page)
-				;
-				// prepend `src` with canonicalized `base_path`
-				src = base_path + src;
-			}
+		// is `src` page-relative? (not an absolute URL, and not a domain-relative path, beginning with /)
+		else if (!absolute_regex.test(src) && src[0] != "/") {
+			// prepend `base_path`, if any
+			src = (base_path || "") + src;
 		}
-		return src;
+		// make sure to return `src` as absolute
+		return absolute_regex.test(src) ? src : ((src[0] == "/" ? root_domain : root_page) + src);
 	}
 
 	// merge `source` into `target`
