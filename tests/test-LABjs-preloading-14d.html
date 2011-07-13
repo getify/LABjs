@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>LABjs tests (LABjs with preloading #14d)</title>
+
+<!-- testing separate chains and duplicates -->
+
+<script type="text/javascript" src="../js/LAB.js"></script>
+<script>
+
+var timeDiff = function(){
+	var d, time;
+	return {
+		setStartTime:function (){
+			d = new Date();
+			time  = d.getTime();
+		},
+		getDiff:function (){
+			d = new Date();
+			return (d.getTime()-time);
+		}
+	};
+}();
+
+var script3b = "not yet";
+
+function done() {
+	var log_value_text = "Loading/Execution Time: "+timeDiff.getDiff()+"\nVerification: "+script3b+"\n";
+	(function fn(){
+		var load_log = document.getElementById("load_log");
+		if (load_log !== null) load_log.value += log_value_text;
+		else setTimeout(fn,10);
+	})();
+}
+
+timeDiff.setStartTime();
+
+$LAB.setGlobalDefaults({AlwaysPreserveOrder:true});
+
+$LAB
+.script("http://labjs.xhr.me/test_suite/testscript1.php?delay=5")
+.script("testscript2.php?delay=3")
+.script("http://labjs.xhr.me/test_suite/testscript3.php?delay=1"); // should execute
+
+$LAB
+.script("http://labjs.xhr.me/test_suite/testscript3.php?delay=1") // duplicate, shouldn't load
+.script("http://labjs.xhr.me/test_suite/testscript3b.php?delay=2")
+.wait(done);
+	
+</script>
+</head>
+
+<body>
+
+<h1>LABjs tests (LABjs with preloading #14d)</h1>
+<ul>
+<li><a href="test-LABjs-preloading-14a.html">test 14a</a></li>
+<li><a href="test-LABjs-preloading-14b.html">test 14b</a></li>
+<li><a href="test-LABjs-preloading-14c.html">test 14c</a></li>
+<li><a href="test-LABjs-preloading-14d.html">test 14d</a></li>
+<li><a href="test-LABjs-preloading-14e.html">test 14e</a></li>
+</ul>
+
+<img src="img1.jpg" width="100" hspace="5" alt="image 1" title="size: 379kb" />
+<img src="img2.jpg" width="100" hspace="5" alt="image 2" title="size: 20kb" />
+
+<br />
+<form name="log_form">
+<textarea id="load_log" name="load_log" cols="80" rows="10"></textarea>
+</form>
+
+</body>
+</html>

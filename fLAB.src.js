@@ -1,4 +1,4 @@
-// fLAB.js (file:// protocol adapter for LABjs 1.0+)
+// fLAB.js (file:// protocol adapter for LABjs 1.x only)
 // v0.2 (c) Kyle Simpson
 // MIT License
 

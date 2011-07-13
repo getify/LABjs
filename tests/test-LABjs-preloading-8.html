@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>LABjs tests (LABjs with preloading #8)</title>
+<script type="text/javascript">
+(function(){ // trap native XHR instantiators to verify that XHR is not used for local script load
+	// literally redefine the native XHR object here
+	try {
+		var old_XHR = XMLHttpRequest;
+		XMLHttpRequest = function() {
+			console.log("XHR used. :(");
+			return new old_XHR();
+		}
+	}
+	catch (err) { }
+	// IE only, for the IE specific XHR code instantiation
+	try {
+		if (window.ActiveXObject) {
+			var old_ActiveXObject = window.ActiveXObject;
+			window.ActiveXObject = function(typeStr) {
+				if (typeStr === "Microsoft.XMLHTTP") { 
+					console.log("XHR used. :(");
+				}
+				return new old_ActiveXObject(typeStr);
+			}
+		}
+	}
+	catch (err) { }
+})();
+</script>
+<script type="text/javascript" src="../js/LAB.js"></script>
+<script>
+
+var timeDiff = function(){
+	var d, time;
+	return {
+		setStartTime:function (){
+			d = new Date();
+			time  = d.getTime();
+		},
+		getDiff:function (){
+			d = new Date();
+			return (d.getTime()-time);
+		}
+	};
+}();
+
+function done() {
+	var log_value_text = "Loading/Execution Time: "+timeDiff.getDiff()+"\nVerification: "+script3+"\n";
+	(function fn(){
+		var load_log = document.getElementById("load_log");
+		if (load_log !== null) load_log.value += log_value_text;
+		else setTimeout(fn,10);
+	})();
+}
+
+timeDiff.setStartTime();
+
+$LAB
+.setOptions({AlwaysPreserveOrder:true,UseLocalXHR:false})
+.script("http://labjs.xhr.me/test_suite/testscript1.php?delay=5")
+.script("testscript2.php?delay=3")
+.script("http://labjs.xhr.me/test_suite/testscript3.php?delay=1")
+.wait(done);
+	
+</script>
+</head>
+
+<body>
+
+<h1>LABjs tests (LABjs with preloading #8)</h1>
+
+<img src="img1.jpg" width="100" hspace="5" alt="image 1" title="size: 379kb" />
+<img src="img2.jpg" width="100" hspace="5" alt="image 2" title="size: 20kb" />
+
+<br />
+<form name="log_form">
+<textarea id="load_log" name="load_log" cols="80" rows="10"></textarea>
+</form>
+
+</body>
+</html>
