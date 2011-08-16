@@ -7,25 +7,25 @@ The defining characteristic of LABjs is the ability to load *all* JavaScript fil
 
 For instance, the following "&lt;script> tag soup":
 
-    <script type="text/javascript" src="http://remote.tld/jquery.js"></script>
-    <script type="text/javascript" src="local/plugin1.jquery.js"></script>
-    <script type="text/javascript" src="local/plugin2.jquery.js"></script>
-    <script type="text/javascript" src="local/init.js"></script>
-    <script type="text/javascript">
+    <script src="http://remote.tld/jquery.js"></script>
+    <script src="local/plugin1.jquery.js"></script>
+    <script src="local/plugin2.jquery.js"></script>
+    <script src="local/init.js"></script>
+    <script>
 	    initMyPage();
     </script>
 
 
 With LABjs becomes:
 
-    <script type="text/javascript" src="LAB.js"></script>
-    <script type="text/javascript">
+    <script src="LAB.js"></script>
+    <script>
       $LAB
       .script("http://remote.tld/jquery.js").wait()
       .script("/local/plugin1.jquery.js")
       .script("/local/plugin2.jquery.js").wait()
       .script("/local/init.js").wait(function(){
-        initMyPage();
+          initMyPage();
       });
     </script>
 
