@@ -1,5 +1,5 @@
 /*! LAB.js (LABjs :: Loading And Blocking JavaScript)
-    v2.0.1 (c) Kyle Simpson
+    v2.0.2 (c) Kyle Simpson
     MIT License
 */
 
@@ -104,7 +104,7 @@
 	function script_executed(registry_item) {
 		registry_item.ready = registry_item.finished = true;
 		for (var i=0; i<registry_item.finished_listeners.length; i++) {
-			setTimeout(registry_item.finished_listeners[i],0);
+			registry_item.finished_listeners[i]();
 		}
 		registry_item.ready_listeners = [];
 		registry_item.finished_listeners = [];
@@ -283,7 +283,7 @@
 						function(){
 							registry_item.ready = true;
 							for (var i=0; i<registry_item.ready_listeners.length; i++) {
-								setTimeout(registry_item.ready_listeners[i],0);
+								registry_item.ready_listeners[i]();
 							}
 							registry_item.ready_listeners = [];
 						} :
@@ -296,7 +296,7 @@
 			else {
 				registry_item = registry_items[0];
 				if (registry_item.finished) {
-					setTimeout(finished_cb,0);
+					finished_cb();
 				}
 				else {
 					registry_item.finished_listeners.push(finished_cb);
@@ -341,9 +341,10 @@
 				while (exec_cursor < chain.length) {
 					if (is_func(chain[exec_cursor])) {
 						/*!START_DEBUG*/if (chain_opts[_Debug]) log_msg("$LAB.wait() executing: "+chain[exec_cursor]);/*!END_DEBUG*/
-						try { chain[exec_cursor](); } catch (err) {
+						try { chain[exec_cursor++](); } catch (err) {
 							/*!START_DEBUG*/if (chain_opts[_Debug]) log_error("$LAB.wait() error caught: ",err);/*!END_DEBUG*/
 						}
+						continue;
 					}
 					else if (!chain[exec_cursor].finished) {
 						if (check_chain_group_scripts_ready(chain[exec_cursor])) continue;
@@ -383,10 +384,11 @@
 								if (is_func(script_obj)) script_obj = script_obj();
 								if (!script_obj) continue;
 								if (is_array(script_obj)) {
-									splice_args = [].slice.call(script_obj);
-									splice_args.push(j,1);
-									script_list.splice.call(script_list,splice_args);
-									j--;
+									// set up an array of arguments to pass to splice()
+									splice_args = [].slice.call(script_obj); // first include the actual array elements we want to splice in
+									splice_args.unshift(j,1); // next, put the `index` and `howMany` parameters onto the beginning of the splice-arguments array
+									[].splice.apply(script_list,splice_args); // use the splice-arguments array as arguments for splice()
+									j--; // adjust `j` to account for the loop's subsequent `j++`, so that the next loop iteration uses the same `j` index value
 									continue;
 								}
 								if (typeof script_obj == "string") script_obj = {src:script_obj};
