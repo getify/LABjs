@@ -35,9 +35,10 @@ $LAB
 .setOptions({AlwaysPreserveOrder:true})
 .script(
 	["http://labjs.xhr.me/test_suite/testscript1.php?delay=5",
-		"testscript2.php?delay=3"
-	],
-	"http://labjs.xhr.me/test_suite/testscript3.php?delay=1"
+		["testscript2.php?delay=3",
+			"http://labjs.xhr.me/test_suite/testscript3.php?delay=1"
+		]
+	]
 )
 .wait(done);
 	
