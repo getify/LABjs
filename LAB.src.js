@@ -1,5 +1,5 @@
 /*! LAB.js (LABjs :: Loading And Blocking JavaScript)
-    v2.0.2 (c) Kyle Simpson
+    v2.0.3 (c) Kyle Simpson
     MIT License
 */
 
@@ -143,7 +143,6 @@
 					else {
 						script.onreadystatechange = function(){
 							if (script.readyState == "loaded") onload();
-							script.onreadystatechange = null;
 						};
 					}
 					script.src = src;
@@ -216,8 +215,8 @@
 			
 			function preload_execute_finished() {
 				if (script != null) { // make sure this only ever fires once
-					script_executed(registry_item);
 					script = null;
+					script_executed(registry_item);
 				}
 			}
 			
