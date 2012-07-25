@@ -1,6 +1,8 @@
 LABjs (Loading And Blocking JavaScript)
 =======================================
 
+**NOTE: LABjs is now 3 years old, and has been stable (no bug fixes/patches) for almost a year. It accomplished its goal of leading the way to usher in dynamic script loading techniques to improve web performance. Furthermore, the community clearly prefers (by and large) the AMD pattern. Therefore, as of today, July 25, 2012, no further development effort is likely to occur on this project. Thank you to the community for your support of this project over the last 3 years.**
+
 LABjs is a dynamic script loader intended to replace the use of the ugly, non-performant &lt;script> tag with a flexible and performance-optimized alternative API.
 
 The defining characteristic of LABjs is the ability to load *all* JavaScript files in parallel, as fast as the browser will allow, but giving you the option to ensure proper execution order if you have dependencies between files.
