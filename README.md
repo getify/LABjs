@@ -27,5 +27,5 @@ Want to write your own tasks? There are only four conventions to keep in mind:
 
 1. `buffer` is used by all tasks implicitly, to store the state of your build.
 2. `tasks` contains all the default tasks (currently `concatenate`, `minify`, `attribute`, and `write`).
-3. `queueTask` must be used to run a task synchronously, and all calls to `queueTask` must be made within the first execution loop. Don't queue tasks on asynchronous callbacks -- it won't work.
+3. `queueTask` must be used to run a task synchronously, and all calls to `queueTask` must be made within the first execution loop. Don't queue tasks on asynchronous callbacks -- it won't work. Instead, build any asynchronous functionality into the task definition.
 4. `taskDone` must be called when the task is complete, in order to move on to the next task.
