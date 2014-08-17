@@ -1,0 +1,8 @@
+{
+    "name": "freemason",
+    "version": "0.1.0",
+    "main": "./src/build.js",
+    "dependencies": {
+        "uglify-js": "*"
+    }
+}
