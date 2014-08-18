@@ -3,7 +3,7 @@ freemason
 
 Why use a task runner? Why memorize a million conventions? Why create a giant config file to perform elementary tasks, like bundling and minifying JavaScript?
 
-Why not do this instead?
+Here is an easier solution:
 
 ```JavaScript
 var build = require('freemason').tasks;
