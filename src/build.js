@@ -3,7 +3,7 @@
  */
 console.time( 'Execution time' );
 
-var buffer = null;
+var buffer = new Buffer( 0 );
 
 /* Task Management */
 var taskQueue = [];

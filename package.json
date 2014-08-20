@@ -28,7 +28,9 @@
     "install",
     "bundle",
     "concat",
-    "package"
+    "package",
+    "minify",
+    "obfuscate"
   ],
   "license": "GPLv2",
   "bugs": {
