@@ -44,7 +44,6 @@ In order to require a module, you must define `module.exports`, just like in Nod
     function thisFunctionIsPrivate() {
         // Do stuff
     }
-
     module.exports = {
         executeFunction: thisFunctionIsPrivate
     }
