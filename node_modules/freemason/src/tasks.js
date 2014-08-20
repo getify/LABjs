@@ -1,6 +1,5 @@
 var fs = require( 'fs' );
 var build = require( './build' ),
-    buffer = build.buffer,
     queueTask = build.queueTask,
     taskDone = build.taskDone;
 
@@ -17,7 +16,7 @@ var tasks = {
                         'err': err,
                         'data': data,
                         'callback': function() {
-                            buffer = Buffer.concat( fileBuffers );
+                            build.buffer = Buffer.concat( fileBuffers );
                             console.info( fileBuffers.length + ' files concatenated.' );
                             taskDone();
                         },
@@ -33,8 +32,8 @@ var tasks = {
     'minify': function minify() {
         console.info( 'Obfuscating...' );
         var uglify = require( 'uglify-js' );
-        var ugly = uglify.minify( buffer.toString(), { fromString: true });
-        buffer = new Buffer( ugly.code );
+        var ugly = uglify.minify( build.buffer.toString(), { fromString: true });
+        build.buffer = new Buffer( ugly.code );
         //console.log( buffer.toString() );
         taskDone();
     },
@@ -47,15 +46,15 @@ var tasks = {
     'attribute': function attribute( creditsFile ) {
         console.info( 'Attributing...' );
         fs.readFile( creditsFile, function( err, data ) {
-            buffer = Buffer.concat([ data, buffer ]);
+            build.buffer = Buffer.concat([ data, build.buffer ]);
             taskDone();
         });
     },
 
     'write': function write( outFile ) {
         console.info( 'Writing file...' );
-        fs.writeFile( outFile, buffer, function() {
-            console.info( 'Wrote', buffer.length, 'bytes to', outFile );
+        fs.writeFile( outFile, build.buffer, function() {
+            console.info( 'Wrote', build.buffer.length, 'bytes to', outFile );
             taskDone();
         });
     }
