@@ -40,14 +40,14 @@ $LAB.setGlobalDefaults({CacheBust:true});
 timeDiff.setStartTime();
 
 $LAB
-.script("http://labjs.xhr.me/test_suite/testscript1.php?delay=5").wait()
+.script("http://labjs.getify.com/test_suite/testscript1.php?delay=5").wait()
 .script("testscript2.php?delay=3").wait()
-.script("http://labjs.xhr.me/test_suite/testscript3.php?delay=1"); // should execute
+.script("http://labjs.getify.com/test_suite/testscript3.php?delay=1"); // should execute
 
 $LAB
-.script("http://labjs.xhr.me/test_suite/testscript3.php?delay=1").wait() // duplicate, shouldn't load
+.script("http://labjs.getify.com/test_suite/testscript3.php?delay=1").wait() // duplicate, shouldn't load
 .script("https://ajax.googleapis.com/ajax/libs/jquery/1.4.4/jquery.min.js")
-.script("http://labjs.xhr.me/test_suite/testscript3b.php?delay=2")
+.script("http://labjs.getify.com/test_suite/testscript3b.php?delay=2")
 .wait(function(){jquery = "jQuery("+!(!jQuery)+")"})
 .wait(done);
 	

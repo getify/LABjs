@@ -37,12 +37,12 @@ timeDiff.setStartTime();
 $LAB.setGlobalDefaults({AlwaysPreserveOrder:true});
 
 $LAB
-.script("http://labjs.xhr.me/test_suite/testscript1.php?delay=5");
+.script("http://labjs.getify.com/test_suite/testscript1.php?delay=5");
 
 $LAB
-.script("http://labjs.xhr.me/test_suite/testscript1.php?delay=5")	// duplicate, shouldn't load
+.script("http://labjs.getify.com/test_suite/testscript1.php?delay=5")	// duplicate, shouldn't load
 .script("testscript2.php?delay=3")
-.script("http://labjs.xhr.me/test_suite/testscript3.php?delay=1");
+.script("http://labjs.getify.com/test_suite/testscript3.php?delay=1");
 	
 </script>
 </head>

@@ -37,18 +37,18 @@ function done() {
 timeDiff.setStartTime();
 
 </script>
-<script src="http://labjs.xhr.me/test_suite/testscript1.php?delay=1"></script>
+<script src="http://labjs.getify.com/test_suite/testscript1.php?delay=1"></script>
 <script src="testscript2.php?delay=1"></script>
-<script src="http://labjs.xhr.me/test_suite/testscript3.php?delay=1"></script>
+<script src="http://labjs.getify.com/test_suite/testscript3.php?delay=1"></script>
 <script>
 
 $LAB
 .script(function(){
-	if (typeof script1 == "undefined") return "http://labjs.xhr.me/test_suite/testscript1.php?delay=5";
+	if (typeof script1 == "undefined") return "http://labjs.getify.com/test_suite/testscript1.php?delay=5";
 	else return false;
 })
 .wait()
-.script("http://labjs.xhr.me/test_suite/testscript3b.php?delay=2")
+.script("http://labjs.getify.com/test_suite/testscript3b.php?delay=2")
 .wait()
 .script(function(){
 	if (typeof script2 == "undefined") return "testscript2.php?delay=3";
@@ -56,7 +56,7 @@ $LAB
 })
 .wait()
 .script(function(){
-	if (typeof script3 == "undefined") return {src:"http://labjs.xhr.me/test_suite/testscript3.php?delay=1"};
+	if (typeof script3 == "undefined") return {src:"http://labjs.getify.com/test_suite/testscript3.php?delay=1"};
 	else return false;
 })
 .wait(done);

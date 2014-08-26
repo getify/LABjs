@@ -33,11 +33,11 @@ timeDiff.setStartTime();
 
 $LAB
 .setOptions({AlwaysPreserveOrder:true,AllowDuplicates:true})
-.script("http://labjs.xhr.me/test_suite/testscript1.php?delay=5")
-.script("http://labjs.xhr.me/test_suite/testscript1.php?delay=5") // will be allowed since duplicates are allowed
+.script("http://labjs.getify.com/test_suite/testscript1.php?delay=5")
+.script("http://labjs.getify.com/test_suite/testscript1.php?delay=5") // will be allowed since duplicates are allowed
 .script("testscript2.php?delay=3")
 .script("testscript2.php?delay=3") // will be allowed since duplicates are allowed
-.script("http://labjs.xhr.me/test_suite/testscript3.php?delay=1")
+.script("http://labjs.getify.com/test_suite/testscript3.php?delay=1")
 .wait(done);
 	
 </script>
