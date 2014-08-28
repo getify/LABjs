@@ -1,6 +1,6 @@
 {
   "name": "require",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "homepage": "jsrequire.com",
   "description": "Ridiculously simple asynchronous JavaScript loader, based on LABjs",
   "main": "dist/jsrequire.min.js",
