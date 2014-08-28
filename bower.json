@@ -1,0 +1,29 @@
+{
+  "name": "require",
+  "version": "0.0.0",
+  "homepage": "jsrequire.com",
+  "description": "Ridiculously simple asynchronous JavaScript loader, based on LABjs",
+  "main": "dist/jsrequire.min.js",
+  "keywords": [
+    "require",
+    "labjs",
+    "require.js",
+    "import",
+    "javascript",
+    "asynchronous",
+    "loader",
+    "resource"
+  ],
+  "authors": [
+    {
+      "name": "Alexander Sagalovskiy",
+      "email": "spikesagal@gmail.com",
+      "url": "http://www.figmentfreud.com"
+    }
+  ],
+  "license": "MIT",
+  "ignore": [
+    ".gitignore",
+    "./(!dist/jsrequire*.js)"
+  ]
+}
