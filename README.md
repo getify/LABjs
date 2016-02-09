@@ -8,29 +8,29 @@ LABjs is a dynamic script loader intended to replace the use of the ugly, non-pe
 The defining characteristic of LABjs is the ability to load *all* JavaScript files in parallel, as fast as the browser will allow, but giving you the option to ensure proper execution order if you have dependencies between files.
 
 For instance, the following "&lt;script> tag soup":
-
-    <script src="http://remote.tld/jquery.js"></script>
-    <script src="local/plugin1.jquery.js"></script>
-    <script src="local/plugin2.jquery.js"></script>
-    <script src="local/init.js"></script>
-    <script>
-	    initMyPage();
-    </script>
-
+```html
+<script src="http://remote.tld/jquery.js"></script>
+<script src="local/plugin1.jquery.js"></script>
+<script src="local/plugin2.jquery.js"></script>
+<script src="local/init.js"></script>
+<script>
+	initMyPage();
+</script>
+```
 
 With LABjs becomes:
-
-    <script src="LAB.js"></script>
-    <script>
-      $LAB
-      .script("http://remote.tld/jquery.js").wait()
-      .script("/local/plugin1.jquery.js")
-      .script("/local/plugin2.jquery.js").wait()
-      .script("/local/init.js").wait(function(){
-          initMyPage();
-      });
-    </script>
-
+```html
+<script src="LAB.js"></script>
+<script>
+  $LAB
+  .script("http://remote.tld/jquery.js").wait()
+  .script("/local/plugin1.jquery.js")
+  .script("/local/plugin2.jquery.js").wait()
+  .script("/local/init.js").wait(function(){
+      initMyPage();
+  });
+</script>
+```
 The differences between the two snippets is that with regular &lt;script> tags, you cannot control their loading and executing behavior reliably cross-browser. Some new browsers will load them in parallel but execute them serially, delaying execution of a smaller (quicker loading) script in the pessimistic assumption of dependency on previous scripts. Older browsers will load *and* execute them one-at-a-time, completely losing any parallel loading speed optimizations and slowing the whole process drastically.
 
 All browsers will, however, block other page resources (like stylesheets, images, etc) while these scripts are loading, which causes the rest of the page's content loading to appear much more sluggish to the user.
@@ -54,14 +54,14 @@ Configuration
 There are a number of configuration options which can be specified either globally (for all $LAB chains on the page) or per chain.
 
 For instance:
-
-    $LAB.setGlobalDefaults({AlwaysPreserveOrder:true});
-
+```js
+$LAB.setGlobalDefaults({AlwaysPreserveOrder:true});
+```
 would tell all $LAB chains to insert an implicit .wait() call in between each .script() call. The behavior is identical to if you just put the .wait() call in yourself.
 
-
-    $LAB.setOptions({AlwaysPreserveOrder:true}).script(...)...
-
+```js
+$LAB.setOptions({AlwaysPreserveOrder:true}).script(...)...
+```
 would tell just this particular $LAB chain to do the same.
 
 
