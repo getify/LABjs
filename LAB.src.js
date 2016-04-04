@@ -52,14 +52,8 @@
 
 	// **************************************
 
-	// test for function
-	function is_func(func) { return Object.prototype.toString.call(func) == "[object Function]"; }
-
-	// test for array
-	function is_array(arr) { return Object.prototype.toString.call(arr) == "[object Array]"; }
-
 	// make script URL absolute/canonical
-	function canonical_uri(src,base_path) {
+	function canonicalURI(src,base_path) {
 		var absolute_regex = /^\w+\:\/\//;
 
 		// is `src` is protocol-relative (begins with // or ///), prepend protocol
@@ -71,15 +65,20 @@
 			// prepend `base_path`, if any
 			src = (base_path || "") + src;
 		}
+
 		// make sure to return `src` as absolute
-		return absolute_regex.test(src) ? src : ((src.charAt(0) == "/" ? root_domain : root_page) + src);
+		return absolute_regex.test(src) ?
+			src :
+			(
+				(src.charAt(0) == "/" ? root_domain : root_page) + src
+			);
 	}
 
 	// merge `source` into `target`
-	function merge_objs(source,target) {
-		for (var k in source) { if (source.hasOwnProperty(k)) {
+	function mergeObjs(source,target) {
+		for (var k in source) {
 			target[k] = source[k]; // TODO: does this need to be recursive for our purposes?
-		}}
+		}
 		return target;
 	}
 
@@ -159,7 +158,7 @@
 		instanceAPI = {
 			// main API functions
 			setGlobalDefaults: function setGlobalDefaults(opts){
-				merge_objs(opts,global_defaults);
+				mergeObjs(opts,global_defaults);
 				return instanceAPI;
 			},
 			setOptions: function setOptions(){
@@ -217,15 +216,8 @@
 		// **************************************
 
 		// execute a script that has been preloaded already
-		function execute_preloaded_script(chain_opts,script_obj,registry_item) {
+		function executePreloadedScript(chain_opts,script_obj,registry_item) {
 			var script;
-
-			function preload_execute_finished() {
-				if (script != null) { // make sure this only ever fires once
-					script = null;
-					script_executed(registry_item);
-				}
-			}
 
 			if (registry[script_obj.src].finished) return;
 			if (!chain_opts[_AllowDuplicates]) registry[script_obj.src].finished = true;
@@ -235,51 +227,46 @@
 			if (script_obj.charset) script.charset = script_obj.charset;
 			create_script_load_listener(script,registry_item,"finished",preload_execute_finished);
 
-			// script elem was real-preloaded
-			if (registry_item.elem) {
-				registry_item.elem = null;
-			}
-			// script was XHR preloaded
-			else if (registry_item.text) {
-				script.onload = script.onreadystatechange = null;	// script injection doesn't fire these events
-				script.text = registry_item.text;
-			}
-			// script was cache-preloaded
-			else {
-				script.src = script_obj.real_src;
-			}
+			script.src = script_obj.real_src;
+
 			append_to.insertBefore(script,append_to.firstChild);
 
-			// manually fire execution callback for injected scripts, since events don't fire
-			if (registry_item.text) {
-				preload_execute_finished();
+			// **************************************
+
+			function preload_execute_finished() {
+				if (script != null) { // make sure this only ever fires once
+					script = null;
+					script_executed(registry_item);
+				}
 			}
 		}
 
 		// process the script request setup
-		function do_script(chain_opts,script_obj,chain_group,preload_this_script) {
-			var registry_item,
-				registry_items,
-				ready_cb = function(){ script_obj.ready_cb(script_obj,function(){ execute_preloaded_script(chain_opts,script_obj,registry_item); }); },
-				finished_cb = function(){ script_obj.finished_cb(script_obj,chain_group); }
-			;
+		function setupScript(chain_opts,script_obj,chain_group,preload_this_script) {
+			var registry_item;
+			var registry_items;
 
-			script_obj.src = canonical_uri(script_obj.src,chain_opts[_BasePath]);
+			script_obj.src = canonicalURI(script_obj.src,chain_opts[_BasePath]);
 			script_obj.real_src = script_obj.src +
 				// append cache-bust param to URL?
 				(chain_opts[_CacheBust] ? ((/\?.*$/.test(script_obj.src) ? "&_" : "?_") + ~~(Math.random()*1E9) + "=") : "")
 			;
 
-			if (!registry[script_obj.src]) registry[script_obj.src] = {items:[],finished:false};
+			if (!registry[script_obj.src]) {
+				registry[script_obj.src] = {
+					items: [],
+					finished: false
+				};
+			}
 			registry_items = registry[script_obj.src].items;
 
 			// allowing duplicates, or is this the first recorded load of this script?
 			if (chain_opts[_AllowDuplicates] || registry_items.length == 0) {
 				registry_item = registry_items[registry_items.length] = {
-					ready:false,
-					finished:false,
-					ready_listeners:[ready_cb],
-					finished_listeners:[finished_cb]
+					ready: false,
+					finished: false,
+					ready_listeners: [ready_cb],
+					finished_listeners: [finished_cb]
 				};
 
 				requestScript(chain_opts,script_obj,registry_item,
@@ -308,12 +295,23 @@
 					registry_item.finished_listeners.push(finished_cb);
 				}
 			}
+
+
+			function ready_cb() {
+				script_obj.ready_cb(script_obj,function done(){
+					executePreloadedScript(chain_opts,script_obj,registry_item);
+				});
+			}
+
+			function finished_cb() {
+				script_obj.finished_cb(script_obj,chain_group);
+			}
 		}
 
 		// creates a closure for each separate chain spawned from this $LAB instance, to keep state cleanly separated between chains
 		function createChainInstance() {
 			var chainedAPI,
-				chain_opts = merge_objs(global_defaults,{}),
+				chain_opts = mergeObjs(global_defaults,{}),
 				chain = [],
 				exec_cursor = 0,
 				scripts_currently_loading = false,
@@ -331,7 +329,7 @@
 				script: chainedAPI.script,
 				wait: chainedAPI.wait,
 				setOptions: function setOptions(opts){
-					merge_objs(opts,chain_opts);
+					mergeObjs(opts,chain_opts);
 					return chainedAPI;
 				}
 			};
@@ -364,7 +362,7 @@
 			// main driver for executing each part of the chain
 			function advance_exec_cursor() {
 				while (exec_cursor < chain.length) {
-					if (is_func(chain[exec_cursor])) {
+					if (typeof chain[exec_cursor] == "function") {
 						/*!START_DEBUG*/if (chain_opts[_Debug]) log_msg("$LAB.wait() executing: "+chain[exec_cursor]);/*!END_DEBUG*/
 						try { chain[exec_cursor++](); } catch (err) {
 							/*!START_DEBUG*/if (chain_opts[_Debug]) log_error("$LAB.wait() error caught: ",err);/*!END_DEBUG*/
@@ -397,16 +395,16 @@
 					(function(script_obj,script_list){
 						var splice_args;
 
-						if (!is_array(script_obj)) {
+						if (!Array.isArray(script_obj)) {
 							script_list = [script_obj];
 						}
 						for (var j=0; j<script_list.length; j++) {
 							init_script_chain_group();
 							script_obj = script_list[j];
 
-							if (is_func(script_obj)) script_obj = script_obj();
+							if (typeof script_obj == "function") script_obj = script_obj();
 							if (!script_obj) continue;
-							if (is_array(script_obj)) {
+							if (Array.isArray(script_obj)) {
 								// set up an array of arguments to pass to splice()
 								splice_args = [].slice.call(script_obj); // first include the actual array elements we want to splice in
 								splice_args.unshift(j,1); // next, put the `index` and `howMany` parameters onto the beginning of the splice-arguments array
@@ -415,7 +413,7 @@
 								continue;
 							}
 							if (typeof script_obj == "string") script_obj = {src:script_obj};
-							script_obj = merge_objs(script_obj,{
+							script_obj = mergeObjs(script_obj,{
 								ready:false,
 								ready_cb:chain_script_ready,
 								finished:false,
@@ -424,7 +422,7 @@
 							group.finished = false;
 							group.scripts.push(script_obj);
 
-							do_script(chain_opts,script_obj,group,(can_use_preloading && scripts_currently_loading));
+							setupScript(chain_opts,script_obj,group,(can_use_preloading && scripts_currently_loading));
 							scripts_currently_loading = true;
 
 							if (chain_opts[_AlwaysPreserveOrder]) chainedAPI.wait();
