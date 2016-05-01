@@ -9,39 +9,39 @@
 })("$LAB",this,function DEF(name,context){
 	"use strict";
 
-	var _$LAB = context.$LAB;
+	var old$LAB = context.$LAB;
 
 	// constants for the valid keys of the options object
-	var _AlwaysPreserveOrder = "AlwaysPreserveOrder";
-	var _AllowDuplicates = "AllowDuplicates";
-	var _CacheBust = "CacheBust";
-	/*!START_DEBUG*/var _Debug = "Debug";/*!END_DEBUG*/
-	var _BasePath = "BasePath";
+	var keyAlwaysPreserveOrder = "AlwaysPreserveOrder";
+	var keyAllowDuplicates = "AllowDuplicates";
+	var keyCacheBust = "CacheBust";
+	/*!START_DEBUG*/var debugMode = "Debug";/*!END_DEBUG*/
+	var keyBasePath = "BasePath";
 
 	// stateless variables used across all $LAB instances
-	var root_page = /^[^?#]*\//.exec(location.href)[0];
-	var root_domain = /^\w+\:\/\/\/?[^\/]+/.exec(root_page)[0];
-	var append_to = document.head;
+	var rootPage = /^[^?#]*\//.exec(location.href)[0];
+	var rootDomain = /^\w+\:\/\/\/?[^\/]+/.exec(rootPage)[0];
+	var appendTo = document.head;
 
 /*!START_DEBUG*/
 	// console.log() and console.error() wrappers
-	var log_msg = function NOOP(){};
-	var log_error = log_msg;
+	var logMsg = function NOOP(){};
+	var logError = logMsg;
 /*!END_DEBUG*/
 
 	// feature sniffs (yay!)
-	var test_script_elem = document.createElement("script"),
-	var real_preloading;
+	var testScriptElem = document.createElement("script"),
+	var realPreloading;
 
 	// http://wiki.whatwg.org/wiki/Dynamic_Script_Execution_Order
-	var script_ordered_async = !real_preloading && test_script_elem.async === true;
+	var scriptOrderedAsync = !realPreloading && testScriptElem.async === true;
 
 /*!START_DEBUG*/
 	// define console wrapper functions if applicable
 	if (context.console && context.console.log) {
 		if (!context.console.error) context.console.error = context.console.log;
-		log_msg = function LOG_MSG(msg) { context.console.log(msg); };
-		log_error = function LOG_ERROR(msg,err) { context.console.error(msg,err); };
+		logMsg = function logMsg(msg) { context.console.log(msg); };
+		logError = function logError(msg,err) { context.console.error(msg,err); };
 	}
 /*!END_DEBUG*/
 
@@ -53,24 +53,24 @@
 	// **************************************
 
 	// make script URL absolute/canonical
-	function canonicalURI(src,base_path) {
-		var absolute_regex = /^\w+\:\/\//;
+	function canonicalURI(src,basePath) {
+		var absoluteRegex = /^\w+\:\/\//;
 
 		// is `src` is protocol-relative (begins with // or ///), prepend protocol
 		if (/^\/\/\/?/.test(src)) {
 			src = location.protocol + src;
 		}
 		// is `src` page-relative? (not an absolute URL, and not a domain-relative path, beginning with /)
-		else if (!absolute_regex.test(src) && src.charAt(0) != "/") {
-			// prepend `base_path`, if any
-			src = (base_path || "") + src;
+		else if (!absoluteRegex.test(src) && src.charAt(0) != "/") {
+			// prepend `basePath`, if any
+			src = (basePath || "") + src;
 		}
 
 		// make sure to return `src` as absolute
-		return absolute_regex.test(src) ?
+		return absoluteRegex.test(src) ?
 			src :
 			(
-				(src.charAt(0) == "/" ? root_domain : root_page) + src
+				(src.charAt(0) == "/" ? rootDomain : rootPage) + src
 			);
 	}
 
@@ -84,81 +84,81 @@
 
 
 	// creates a script load listener
-	function create_script_load_listener(elem,registry_item,flag,onload) {
-		elem.onload = elem.onreadystatechange = function() {
-			if ((elem.readyState && elem.readyState != "complete" && elem.readyState != "loaded") || registry_item[flag]) return;
+	function createScriptLoadListener(elem,registryItem,flag,onload) {
+		elem.onload = elem.onreadystatechange = function elemOnload() {
+			if ((elem.readyState && elem.readyState != "complete" && elem.readyState != "loaded") || registryItem[flag]) return;
 			elem.onload = elem.onreadystatechange = null;
 			onload();
 		};
 	}
 
 	// script executed handler
-	function script_executed(registry_item) {
-		registry_item.ready = registry_item.finished = true;
-		for (var i=0; i<registry_item.finished_listeners.length; i++) {
-			registry_item.finished_listeners[i]();
+	function scriptExecuted(registryItem) {
+		registryItem.ready = registryItem.finished = true;
+		for (var i=0; i<registryItem.finishedListeners.length; i++) {
+			registryItem.finishedListeners[i]();
 		}
-		registry_item.ready_listeners = [];
-		registry_item.finished_listeners = [];
+		registryItem.readyListeners = [];
+		registryItem.finishedListeners = [];
 	}
 
 	// make the request for a scriptha
-	function requestScript(chain_opts,script_obj,registry_item,onload,preload_this_script) {
+	function requestScript(chainOpts,scriptObj,registryItem,onload,preloadThisScript) {
 		var script;
-		var src = script_obj.real_src;
+		var src = scriptObj.realSrc;
 
 		script = document.createElement("script");
 
-		if (script_obj.type) {
-			script.type = script_obj.type;
+		if (scriptObj.type) {
+			script.type = scriptObj.type;
 		}
-		if (script_obj.charset) {
-			script.charset = script_obj.charset;
+		if (scriptObj.charset) {
+			script.charset = scriptObj.charset;
 		}
 
 		// should preloading be used for this script?
-		if (preload_this_script) {
+		if (preloadThisScript) {
 			// TODO
 		}
 		// use async=false for ordered async?
 		// parallel-load-serial-execute
 		// http://wiki.whatwg.org/wiki/Dynamic_Script_Execution_Order
-		else if (script_ordered_async) {
-			/*!START_DEBUG*/if (chain_opts[_Debug]) log_msg("start script load (ordered async): "+src);/*!END_DEBUG*/
+		else if (scriptOrderedAsync) {
+			/*!START_DEBUG*/if (chainOpts[debugMode]) logMsg("start script load (ordered async): "+src);/*!END_DEBUG*/
 			script.async = false;
-			create_script_load_listener(script,registry_item,"finished",onload);
+			createScriptLoadListener(script,registryItem,"finished",onload);
 			script.src = src;
-			append_to.insertBefore(script,append_to.firstChild);
+			appendTo.insertBefore(script,appendTo.firstChild);
 		}
 		// otherwise, just a normal script element
 		else {
-			/*!START_DEBUG*/if (chain_opts[_Debug]) log_msg("start script load: "+src);/*!END_DEBUG*/
-			create_script_load_listener(script,registry_item,"finished",onload);
+			/*!START_DEBUG*/if (chainOpts[debugMode]) logMsg("start script load: "+src);/*!END_DEBUG*/
+			createScriptLoadListener(script,registryItem,"finished",onload);
 			script.src = src;
-			append_to.insertBefore(script,append_to.firstChild);
+			appendTo.insertBefore(script,appendTo.firstChild);
 		}
 	}
 
 	// create a clean instance of $LAB
 	function createSandbox() {
-		var global_defaults = {};
+		var globalDefaults = {};
 		var queue = [];
 		var registry = {};
 		var instanceAPI;
 
 		// global defaults
-		global_defaults[_AlwaysPreserveOrder] = false;
-		global_defaults[_AllowDuplicates] = false;
-		global_defaults[_CacheBust] = false;
-		/*!START_DEBUG*/global_defaults[_Debug] = false;/*!END_DEBUG*/
-		global_defaults[_BasePath] = "";
+		globalDefaults[keyAlwaysPreserveOrder] = false;
+		globalDefaults[keyAllowDuplicates] = false;
+		globalDefaults[keyCacheBust] = false;
+		/*!START_DEBUG*/globalDefaults[debugMode] = false;/*!END_DEBUG*/
+		globalDefaults[keyBasePath] = "";
 
 
 		// API for each initial $LAB instance (before chaining starts)
 		instanceAPI = {
 			// main API functions
 			setGlobalDefaults: function setGlobalDefaults(opts){
-				mergeObjs(opts,global_defaults);
+				mergeObjs(opts,globalDefaults);
 				return instanceAPI;
 			},
 			setOptions: function setOptions(){
@@ -200,7 +200,7 @@
 			// rollback `context.$LAB` to what it was before this file
 			// was loaded, then return this current instance of $LAB
 			noConflict: function onConflict(){
-				context.$LAB = _$LAB;
+				context.$LAB = old$LAB;
 				return instanceAPI;
 			},
 
@@ -216,105 +216,105 @@
 		// **************************************
 
 		// execute a script that has been preloaded already
-		function executePreloadedScript(chain_opts,script_obj,registry_item) {
+		function executePreloadedScript(chainOpts,scriptObj,registryItem) {
 			var script;
 
-			if (registry[script_obj.src].finished) return;
-			if (!chain_opts[_AllowDuplicates]) registry[script_obj.src].finished = true;
+			if (registry[scriptObj.src].finished) return;
+			if (!chainOpts[keyAllowDuplicates]) registry[scriptObj.src].finished = true;
 
-			script = registry_item.elem || document.createElement("script");
-			if (script_obj.type) script.type = script_obj.type;
-			if (script_obj.charset) script.charset = script_obj.charset;
-			create_script_load_listener(script,registry_item,"finished",preload_execute_finished);
+			script = registryItem.elem || document.createElement("script");
+			if (scriptObj.type) script.type = scriptObj.type;
+			if (scriptObj.charset) script.charset = scriptObj.charset;
+			createScriptLoadListener(script,registryItem,"finished",preloadExecuteFinished);
 
-			script.src = script_obj.real_src;
+			script.src = scriptObj.realSrc;
 
-			append_to.insertBefore(script,append_to.firstChild);
+			appendTo.insertBefore(script,appendTo.firstChild);
 
 			// **************************************
 
-			function preload_execute_finished() {
+			function preloadExecuteFinished() {
 				if (script != null) { // make sure this only ever fires once
 					script = null;
-					script_executed(registry_item);
+					scriptExecuted(registryItem);
 				}
 			}
 		}
 
 		// process the script request setup
-		function setupScript(chain_opts,script_obj,chain_group,preload_this_script) {
-			var registry_item;
-			var registry_items;
+		function setupScript(chainOpts,scriptObj,chainGroup,preloadThisScript) {
+			var registryItem;
+			var registryItems;
 
-			script_obj.src = canonicalURI(script_obj.src,chain_opts[_BasePath]);
-			script_obj.real_src = script_obj.src +
+			scriptObj.src = canonicalURI(scriptObj.src,chainOpts[keyBasePath]);
+			scriptObj.realSrc = scriptObj.src +
 				// append cache-bust param to URL?
-				(chain_opts[_CacheBust] ? ((/\?.*$/.test(script_obj.src) ? "&_" : "?_") + ~~(Math.random()*1E9) + "=") : "")
+				(chainOpts[keyCacheBust] ? ((/\?.*$/.test(scriptObj.src) ? "&_" : "?_") + ~~(Math.random()*1E9) + "=") : "")
 			;
 
-			if (!registry[script_obj.src]) {
-				registry[script_obj.src] = {
+			if (!registry[scriptObj.src]) {
+				registry[scriptObj.src] = {
 					items: [],
 					finished: false
 				};
 			}
-			registry_items = registry[script_obj.src].items;
+			registryItems = registry[scriptObj.src].items;
 
 			// allowing duplicates, or is this the first recorded load of this script?
-			if (chain_opts[_AllowDuplicates] || registry_items.length == 0) {
-				registry_item = registry_items[registry_items.length] = {
+			if (chainOpts[keyAllowDuplicates] || registryItems.length == 0) {
+				registryItem = registryItems[registryItems.length] = {
 					ready: false,
 					finished: false,
-					ready_listeners: [ready_cb],
-					finished_listeners: [finished_cb]
+					readyListeners: [onReady],
+					finishedListeners: [onFinished]
 				};
 
-				requestScript(chain_opts,script_obj,registry_item,
+				requestScript(chainOpts,scriptObj,registryItem,
 					// which callback type to pass?
 					(
-					 	(preload_this_script) ? // depends on script-preloading
-						function(){
-							registry_item.ready = true;
-							for (var i=0; i<registry_item.ready_listeners.length; i++) {
-								registry_item.ready_listeners[i]();
+					 	(preloadThisScript) ? // depends on script-preloading
+						function onScriptPreloaded(){
+							registryItem.ready = true;
+							for (var i=0; i<registryItem.readyListeners.length; i++) {
+								registryItem.readyListeners[i]();
 							}
-							registry_item.ready_listeners = [];
+							registryItem.readyListeners = [];
 						} :
-						function(){ script_executed(registry_item); }
+						function onScriptExecuted(){ scriptExecuted(registryItem); }
 					),
 					// signal if script-preloading should be used or not
-					preload_this_script
+					preloadThisScript
 				);
 			}
 			else {
-				registry_item = registry_items[0];
-				if (registry_item.finished) {
-					finished_cb();
+				registryItem = registryItems[0];
+				if (registryItem.finished) {
+					onFinished();
 				}
 				else {
-					registry_item.finished_listeners.push(finished_cb);
+					registryItem.finishedListeners.push(onFinished);
 				}
 			}
 
 
-			function ready_cb() {
-				script_obj.ready_cb(script_obj,function done(){
-					executePreloadedScript(chain_opts,script_obj,registry_item);
+			function onReady() {
+				scriptObj.onReady(scriptObj,function done(){
+					executePreloadedScript(chainOpts,scriptObj,registryItem);
 				});
 			}
 
-			function finished_cb() {
-				script_obj.finished_cb(script_obj,chain_group);
+			function onFinished() {
+				scriptObj.onFinished(scriptObj,chainGroup);
 			}
 		}
 
 		// creates a closure for each separate chain spawned from this $LAB instance, to keep state cleanly separated between chains
 		function createChainInstance() {
 			var chainedAPI,
-				chain_opts = mergeObjs(global_defaults,{}),
+				chainOpts = mergeObjs(globalDefaults,{}),
 				chain = [],
-				exec_cursor = 0,
-				scripts_currently_loading = false,
+				execCursor = 0,
+				scriptsCurrentlyLoading = false,
 				group
 			;
 
@@ -329,7 +329,7 @@
 				script: chainedAPI.script,
 				wait: chainedAPI.wait,
 				setOptions: function setOptions(opts){
-					mergeObjs(opts,chain_opts);
+					mergeObjs(opts,chainOpts);
 					return chainedAPI;
 				}
 			};
@@ -338,52 +338,52 @@
 			// **************************************
 
 			// called when a script has finished preloading
-			function chain_script_ready(script_obj,exec_trigger) {
-				/*!START_DEBUG*/if (chain_opts[_Debug]) log_msg("script preload finished: "+script_obj.real_src);/*!END_DEBUG*/
-				script_obj.ready = true;
-				script_obj.exec_trigger = exec_trigger;
-				advance_exec_cursor(); // will only check for 'ready' scripts to be executed
+			function onChainScriptReady(scriptObj,execTrigger) {
+				/*!START_DEBUG*/if (chainOpts[debugMode]) logMsg("script preload finished: "+scriptObj.realSrc);/*!END_DEBUG*/
+				scriptObj.ready = true;
+				scriptObj.execTrigger = execTrigger;
+				advanceExecutionCursor(); // will only check for 'ready' scripts to be executed
 			}
 
 			// called when a script has finished executing
-			function chain_script_executed(script_obj,chain_group) {
-				/*!START_DEBUG*/if (chain_opts[_Debug]) log_msg("script execution finished: "+script_obj.real_src);/*!END_DEBUG*/
-				script_obj.ready = script_obj.finished = true;
-				script_obj.exec_trigger = null;
+			function onChainScriptExecuted(scriptObj,chainGroup) {
+				/*!START_DEBUG*/if (chainOpts[debugMode]) logMsg("script execution finished: "+scriptObj.realSrc);/*!END_DEBUG*/
+				scriptObj.ready = scriptObj.finished = true;
+				scriptObj.execTrigger = null;
 				// check if chain group is all finished
-				for (var i=0; i<chain_group.scripts.length; i++) {
-					if (!chain_group.scripts[i].finished) return;
+				for (var i=0; i<chainGroup.scripts.length; i++) {
+					if (!chainGroup.scripts[i].finished) return;
 				}
-				// chain_group is all finished if we get this far
-				chain_group.finished = true;
-				advance_exec_cursor();
+				// chainGroup is all finished if we get this far
+				chainGroup.finished = true;
+				advanceExecutionCursor();
 			}
 
 			// main driver for executing each part of the chain
-			function advance_exec_cursor() {
-				while (exec_cursor < chain.length) {
-					if (typeof chain[exec_cursor] == "function") {
-						/*!START_DEBUG*/if (chain_opts[_Debug]) log_msg("$LAB.wait() executing: "+chain[exec_cursor]);/*!END_DEBUG*/
-						try { chain[exec_cursor++](); } catch (err) {
-							/*!START_DEBUG*/if (chain_opts[_Debug]) log_error("$LAB.wait() error caught: ",err);/*!END_DEBUG*/
+			function advanceExecutionCursor() {
+				while (execCursor < chain.length) {
+					if (typeof chain[execCursor] == "function") {
+						/*!START_DEBUG*/if (chainOpts[debugMode]) logMsg("$LAB.wait() executing: "+chain[execCursor]);/*!END_DEBUG*/
+						try { chain[execCursor++](); } catch (err) {
+							/*!START_DEBUG*/if (chainOpts[debugMode]) logError("$LAB.wait() error caught: ",err);/*!END_DEBUG*/
 						}
 						continue;
 					}
-					else if (!chain[exec_cursor].finished) {
-						if (check_chain_group_scripts_ready(chain[exec_cursor])) continue;
+					else if (!chain[execCursor].finished) {
+						if (checkChainGroupScriptsReady(chain[execCursor])) continue;
 						break;
 					}
-					exec_cursor++;
+					execCursor++;
 				}
 				// we've reached the end of the chain (so far)
-				if (exec_cursor == chain.length) {
-					scripts_currently_loading = false;
+				if (execCursor == chain.length) {
+					scriptsCurrentlyLoading = false;
 					group = false;
 				}
 			}
 
 			// setup next chain script group
-			function init_script_chain_group() {
+			function initScriptChainGroup() {
 				if (!group || !group.scripts) {
 					chain.push(group = {scripts:[],finished:true});
 				}
@@ -392,40 +392,40 @@
 			// start loading one or more scripts
 			function script(){
 				for (var i=0; i<arguments.length; i++) {
-					(function(script_obj,script_list){
-						var splice_args;
+					(function loopScope(scriptObj,scriptList){
+						var spliceArgs;
 
-						if (!Array.isArray(script_obj)) {
-							script_list = [script_obj];
+						if (!Array.isArray(scriptObj)) {
+							scriptList = [scriptObj];
 						}
-						for (var j=0; j<script_list.length; j++) {
-							init_script_chain_group();
-							script_obj = script_list[j];
+						for (var j=0; j<scriptList.length; j++) {
+							initScriptChainGroup();
+							scriptObj = scriptList[j];
 
-							if (typeof script_obj == "function") script_obj = script_obj();
-							if (!script_obj) continue;
-							if (Array.isArray(script_obj)) {
+							if (typeof scriptObj == "function") scriptObj = scriptObj();
+							if (!scriptObj) continue;
+							if (Array.isArray(scriptObj)) {
 								// set up an array of arguments to pass to splice()
-								splice_args = [].slice.call(script_obj); // first include the actual array elements we want to splice in
-								splice_args.unshift(j,1); // next, put the `index` and `howMany` parameters onto the beginning of the splice-arguments array
-								[].splice.apply(script_list,splice_args); // use the splice-arguments array as arguments for splice()
+								spliceArgs = [].slice.call(scriptObj); // first include the actual array elements we want to splice in
+								spliceArgs.unshift(j,1); // next, put the `index` and `howMany` parameters onto the beginning of the splice-arguments array
+								[].splice.apply(scriptList,spliceArgs); // use the splice-arguments array as arguments for splice()
 								j--; // adjust `j` to account for the loop's subsequent `j++`, so that the next loop iteration uses the same `j` index value
 								continue;
 							}
-							if (typeof script_obj == "string") script_obj = {src:script_obj};
-							script_obj = mergeObjs(script_obj,{
+							if (typeof scriptObj == "string") scriptObj = {src:scriptObj};
+							scriptObj = mergeObjs(scriptObj,{
 								ready:false,
-								ready_cb:chain_script_ready,
+								onReady:onChainScriptReady,
 								finished:false,
-								finished_cb:chain_script_executed
+								onFinished:onChainScriptExecuted
 							});
 							group.finished = false;
-							group.scripts.push(script_obj);
+							group.scripts.push(scriptObj);
 
-							setupScript(chain_opts,script_obj,group,(can_use_preloading && scripts_currently_loading));
-							scripts_currently_loading = true;
+							setupScript(chainOpts,scriptObj,group,(canUsePreloading && scriptsCurrentlyLoading));
+							scriptsCurrentlyLoading = true;
 
-							if (chain_opts[_AlwaysPreserveOrder]) chainedAPI.wait();
+							if (chainOpts[keyAlwaysPreserveOrder]) chainedAPI.wait();
 						}
 					})(arguments[i],arguments[i]);
 				}
@@ -442,7 +442,7 @@
 				}
 				else group = false;
 
-				advance_exec_cursor();
+				advanceExecutionCursor();
 
 				return chainedAPI;
 			}
