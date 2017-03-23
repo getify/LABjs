@@ -1,5 +1,5 @@
-/*! LAB.js (LABjs :: Loading And Blocking JavaScript)
-    v3.0.0-pre1 (c) Kyle Simpson
+/*! LAB.js
+    v3.0.0-pre1 (c) 2017 Kyle Simpson
     MIT License
 */
 
@@ -11,40 +11,42 @@
 
 	var old$LAB = context.$LAB;
 
-	// constants for the valid keys of the options object
-	var keyAlwaysPreserveOrder = "AlwaysPreserveOrder";
-	var keyAllowDuplicates = "AllowDuplicates";
-	var keyCacheBust = "CacheBust";
-	/*!START_DEBUG*/var debugMode = "Debug";/*!END_DEBUG*/
-	var keyBasePath = "BasePath";
-
-	// stateless variables used across all $LAB instances
-	var rootPage = /^[^?#]*\//.exec(location.href)[0];
-	var rootDomain = /^\w+\:\/\/\/?[^\/]+/.exec(rootPage)[0];
-	var appendTo = document.head;
-
-/*!START_DEBUG*/
-	// console.log() and console.error() wrappers
+	// placeholders for console output
 	var logMsg = function NOOP(){};
 	var logError = logMsg;
-/*!END_DEBUG*/
-
-	// feature sniffs (yay!)
-	var testScriptElem = document.createElement("script"),
-	var realPreloading;
-
-	// http://wiki.whatwg.org/wiki/Dynamic_Script_Execution_Order
-	var scriptOrderedAsync = !realPreloading && testScriptElem.async === true;
-
-/*!START_DEBUG*/
 	// define console wrapper functions if applicable
 	if (context.console && context.console.log) {
 		if (!context.console.error) context.console.error = context.console.log;
 		logMsg = function logMsg(msg) { context.console.log(msg); };
 		logError = function logError(msg,err) { context.console.error(msg,err); };
 	}
-/*!END_DEBUG*/
+	var linkElems = document.getElementsByTagName( "link" );
 
+	// options keys
+	var optAlwaysPreserveOrder = "AlwaysPreserveOrder";
+	var optCacheBust = "CacheBust";
+	var optDebug = "Debug";
+	var optBasePath = "BasePath";
+
+	// stateless variables used across all $LAB instances
+	var rootPageDir = /^[^?#]*\//.exec( location.href )[0];
+	var rootURL = /^[\w\-]+\:\/\/\/?[^\/]+/.exec( rootPageDir )[0];
+	var appendTo = document.head;
+
+	// feature detections (yay!)
+	var realPreloading = (function featureTest(){
+		// Adapted from: https://gist.github.com/igrigorik/a02f2359f3bc50ca7a9c
+		var tokenList = document.createElement( "link" ).relList;
+		try {
+			if (tokenList && tokenList.supports) {
+				return tokenList.supports( "preload" );
+			}
+		}
+		catch (err) {}
+		return false;
+	})();
+	var scriptOrderedAsync = document.createElement( "script" ).async === true;
+	var perfTiming = context.performance && context.performance.getEntriesByName;
 
 	// create the main instance of $LAB
 	return createSandbox();
@@ -52,401 +54,443 @@
 
 	// **************************************
 
-	// make script URL absolute/canonical
-	function canonicalURI(src,basePath) {
-		var absoluteRegex = /^\w+\:\/\//;
-
-		// is `src` is protocol-relative (begins with // or ///), prepend protocol
-		if (/^\/\/\/?/.test(src)) {
-			src = location.protocol + src;
+	function preloadResource(registryEntry) {
+		var elem = document.createElement( "link" );
+		elem.setAttribute( "href", registryEntry.src );
+		if (registryEntry.type == "script" || registryEntry.type == "module") {
+			elem.setAttribute( "as", "script" );
 		}
-		// is `src` page-relative? (not an absolute URL, and not a domain-relative path, beginning with /)
-		else if (!absoluteRegex.test(src) && src.charAt(0) != "/") {
-			// prepend `basePath`, if any
-			src = (basePath || "") + src;
-		}
-
-		// make sure to return `src` as absolute
-		return absoluteRegex.test(src) ?
-			src :
-			(
-				(src.charAt(0) == "/" ? rootDomain : rootPage) + src
-			);
+		// TODO: handle more resource types
+		elem.setAttribute( "rel", "preload" );
+		elem.setAttribute( "data-requested-with", "LABjs" );
+		document.head.appendChild( elem );
+		registryEntry.preloadRequested = true;
+		return elem;
 	}
 
-	// merge `source` into `target`
-	function mergeObjs(source,target) {
-		for (var k in source) {
-			target[k] = source[k]; // TODO: does this need to be recursive for our purposes?
+	function loadResource(registryEntry) {
+		if (registryEntry.type == "script" || registryEntry.type == "module") {
+			var elem = document.createElement( "script" );
+			elem.setAttribute( "src", registryEntry.src );
+			elem.setAttribute( "data-requested-with", "LABjs" );
+			elem.async = false;		// ensure ordered execution
+			if (registryEntry.type == "module") {
+				elem.setAttribute( "type", "module" );
+			}
 		}
+		if (registryEntry.opts) {
+			// TODO
+		}
+		document.head.appendChild( elem );
+		registryEntry.loadRequested = true;
+		return elem;
+	}
+
+	function throwGlobalError(err) {
+		setTimeout( function globalError(){ throw err; }, 0 );
+	}
+
+	function assign(target,source) {
+		for (var k in source) { target[k] = source[k]; }
 		return target;
 	}
 
+	// make resource URL absolute (canonical)
+	function canonicalURL(src,basePath) {
+		var absoluteRegex = /^[\w\-]+:\/\/\/?/;
 
-	// creates a script load listener
-	function createScriptLoadListener(elem,registryItem,flag,onload) {
-		elem.onload = elem.onreadystatechange = function elemOnload() {
-			if ((elem.readyState && elem.readyState != "complete" && elem.readyState != "loaded") || registryItem[flag]) return;
-			elem.onload = elem.onreadystatechange = null;
-			onload();
-		};
+		// `src` protocol-relative (begins with `//` or `///`)?
+		if (/^\/\/\/?/.test( src )) {
+			src = location.protocol + src;
+		}
+		// `src` page-relative (neither absolute nor domain-relative beginning with `/`)?
+		else if (!absoluteRegex.test( src ) && src[0] != "/") {
+			src = (basePath || "") + src;
+		}
+
+		// `src` still not absolute?
+		if (!absoluteRegex.test( src )) {
+			// domain-relative (begins with `/`)?
+			if (src[0] == "/") {
+				src = rootURL + src;
+			}
+			// otherwise, assume page-relative
+			else {
+				src = rootPageDir + src;
+			}
+		}
+
+		return src;
 	}
 
-	// script executed handler
-	function scriptExecuted(registryItem) {
-		registryItem.ready = registryItem.finished = true;
-		for (var i=0; i<registryItem.finishedListeners.length; i++) {
-			registryItem.finishedListeners[i]();
-		}
-		registryItem.readyListeners = [];
-		registryItem.finishedListeners = [];
-	}
-
-	// make the request for a scriptha
-	function requestScript(chainOpts,scriptObj,registryItem,onload,preloadThisScript) {
-		var script;
-		var src = scriptObj.realSrc;
-
-		script = document.createElement("script");
-
-		if (scriptObj.type) {
-			script.type = scriptObj.type;
-		}
-		if (scriptObj.charset) {
-			script.charset = scriptObj.charset;
-		}
-
-		// should preloading be used for this script?
-		if (preloadThisScript) {
-			// TODO
-		}
-		// use async=false for ordered async?
-		// parallel-load-serial-execute
-		// http://wiki.whatwg.org/wiki/Dynamic_Script_Execution_Order
-		else if (scriptOrderedAsync) {
-			/*!START_DEBUG*/if (chainOpts[debugMode]) logMsg("start script load (ordered async): "+src);/*!END_DEBUG*/
-			script.async = false;
-			createScriptLoadListener(script,registryItem,"finished",onload);
-			script.src = src;
-			appendTo.insertBefore(script,appendTo.firstChild);
-		}
-		// otherwise, just a normal script element
-		else {
-			/*!START_DEBUG*/if (chainOpts[debugMode]) logMsg("start script load: "+src);/*!END_DEBUG*/
-			createScriptLoadListener(script,registryItem,"finished",onload);
-			script.src = src;
-			appendTo.insertBefore(script,appendTo.firstChild);
-		}
-	}
-
-	// create a clean instance of $LAB
+	// create an instance of $LAB
 	function createSandbox() {
-		var globalDefaults = {};
-		var queue = [];
 		var registry = {};
-		var instanceAPI;
+		var defaults = {};
 
-		// global defaults
-		globalDefaults[keyAlwaysPreserveOrder] = false;
-		globalDefaults[keyAllowDuplicates] = false;
-		globalDefaults[keyCacheBust] = false;
-		/*!START_DEBUG*/globalDefaults[debugMode] = false;/*!END_DEBUG*/
-		globalDefaults[keyBasePath] = "";
+		defaults[optAlwaysPreserveOrder] = false;
+		defaults[optCacheBust] = false;
+		defaults[optDebug] = false;
+		defaults[optBasePath] = "";
 
+		if (perfTiming) {
+			registerMarkupLinks();
+		}
 
 		// API for each initial $LAB instance (before chaining starts)
-		instanceAPI = {
-			// main API functions
-			setGlobalDefaults: function setGlobalDefaults(opts){
-				mergeObjs(opts,globalDefaults);
-				return instanceAPI;
-			},
-			setOptions: function setOptions(){
-				return createChainInstance().setOptions.apply(null,arguments);
-			},
-			script: function script(){
-				return createChainInstance().script.apply(null,arguments);
-			},
-			wait: function wait(){
-				return createChainInstance().wait.apply(null,arguments);
-			},
-
-			// built-in queuing for $LAB `script()` and `wait()` calls
-			// useful for building up a chain programmatically across various script locations, and simulating
-			// execution of the chain
-			queueScript: function queueScript(){
-				queue.push({
-					type: "script",
-					args: [].slice.call(arguments)
-				});
-				return instanceAPI;
-			},
-			queueWait: function queueWait(){
-				queue.push({
-					type: "wait",
-					args: [].slice.call(arguments)
-				});
-				return instanceAPI;
-			},
-			runQueue: function runQueue(){
-				var $L = instanceAPI;
-				while (queue.length > 0) {
-					val = queue.shift();
-					$L = $L[val.type].apply(null,val.args);
-				}
-				return $L;
-			},
-
-			// rollback `context.$LAB` to what it was before this file
-			// was loaded, then return this current instance of $LAB
-			noConflict: function onConflict(){
-				context.$LAB = old$LAB;
-				return instanceAPI;
-			},
-
-			// create another clean instance of $LAB
-			sandbox: function sandbox(){
-				return createSandbox();
-			}
+		var publicAPI = {
+			setGlobalDefaults: setGlobalDefaults,
+			setOptions: setOptions,
+			script: script,
+			wait: wait,
+			sandbox: createSandbox,
+			noConflict: noConflict,
 		};
 
-		return instanceAPI;
+		return publicAPI;
 
 
 		// **************************************
 
-		// execute a script that has been preloaded already
-		function executePreloadedScript(chainOpts,scriptObj,registryItem) {
-			var script;
+		function registerMarkupLinks() {
+			for (var i = 0; i < linkElems.length; i++) {
+				(function loopScope(elem){
+					if (
+						elem &&
+						/\bpreload\b/i.test( elem.getAttribute( "rel" ) )
+					) {
+						// must have the `as` attribute
+						var preloadAs = elem.getAttribute( "as" );
+						if (!preloadAs) return;
 
-			if (registry[scriptObj.src].finished) return;
-			if (!chainOpts[keyAllowDuplicates]) registry[scriptObj.src].finished = true;
+						// canonicalize resource URL and look it up in the global performance table
+						var href = elem.getAttribute( "href" );
+						href = canonicalURL( href, document.baseURI );	// TODO: fix document.baseURI here
+						var perfEntries = context.performance.getEntriesByName( href );
 
-			script = registryItem.elem || document.createElement("script");
-			if (scriptObj.type) script.type = scriptObj.type;
-			if (scriptObj.charset) script.charset = scriptObj.charset;
-			createScriptLoadListener(script,registryItem,"finished",preloadExecuteFinished);
+						// already registered this resource?
+						if (href in registry) return;
 
-			script.src = scriptObj.realSrc;
+						// add global registry entry
+						var registryEntry = new createRegistryEntry( null, href );
+						registryEntry.preloadRequested = true;
+						registry[href] = registryEntry;
 
-			appendTo.insertBefore(script,appendTo.firstChild);
-
-			// **************************************
-
-			function preloadExecuteFinished() {
-				if (script != null) { // make sure this only ever fires once
-					script = null;
-					scriptExecuted(registryItem);
-				}
+						// resource already (pre)loaded?
+						if (perfEntries.length > 0) {
+							registryEntry.preloaded = true;
+							console.log( "markup link already preloaded", href );
+						}
+						else {
+							console.log( "listening for markup link preload", href );
+							// listen for preload to complete
+							elem.addEventListener( "load", function resourcePreloaded(){
+								console.log("markup link preloaded!",href);
+								elem.removeEventListener( "load", resourcePreloaded );
+								registryEntry.preloaded = true;
+								notifyRegistryListeners( registryEntry );
+							} );
+						}
+					}
+				})( linkElems[i] );
 			}
 		}
 
-		// process the script request setup
-		function setupScript(chainOpts,scriptObj,chainGroup,preloadThisScript) {
-			var registryItem;
-			var registryItems;
+		// rollback `context.$LAB` to what it was before this file
+		// was loaded, then return this current instance of $LAB
+		function noConflict() {
+			context.$LAB = old$LAB;
+			return publicAPI;
+		}
 
-			scriptObj.src = canonicalURI(scriptObj.src,chainOpts[keyBasePath]);
-			scriptObj.realSrc = scriptObj.src +
-				// append cache-bust param to URL?
-				(chainOpts[keyCacheBust] ? ((/\?.*$/.test(scriptObj.src) ? "&_" : "?_") + ~~(Math.random()*1E9) + "=") : "")
-			;
+		function setGlobalDefaults(opts) {
+			defaults = assign( defaults, opts );
+			return publicAPI;
+		}
 
-			if (!registry[scriptObj.src]) {
-				registry[scriptObj.src] = {
-					items: [],
-					finished: false
-				};
+		function setOptions() {
+			return createChainInstance().setOptions.apply( null, arguments );
+		}
+
+		function script() {
+			return createChainInstance().script.apply( null, arguments );
+		}
+
+		function wait() {
+			return createChainInstance().wait.apply( null, arguments );
+		}
+
+		function createGroupEntry(check) {
+			this.isGroup = true;
+			this.resources = [];
+			this.ready = false;
+			this.complete = false;
+			this.check = check || function(){};
+		}
+
+		function createRegistryEntry(type,src) {
+			this.type = type;
+			this.src = src;
+			this.listeners = [];
+			this.preloadRequested = false;
+			this.preloaded = false;
+			this.loadRequested = false;
+			this.complete = false;
+			this.opts = null;
+		}
+
+		function registerResource(resourceRecord) {
+			// registry entry doesn't exist yet?
+			if (!(resourceRecord.src in registry)) {
+				registry[resourceRecord.src] = new createRegistryEntry( resourceRecord.type, resourceRecord.src );
 			}
-			registryItems = registry[scriptObj.src].items;
 
-			// allowing duplicates, or is this the first recorded load of this script?
-			if (chainOpts[keyAllowDuplicates] || registryItems.length == 0) {
-				registryItem = registryItems[registryItems.length] = {
-					ready: false,
-					finished: false,
-					readyListeners: [onReady],
-					finishedListeners: [onFinished]
-				};
+			var registryEntry = registry[resourceRecord.src];
 
-				requestScript(chainOpts,scriptObj,registryItem,
-					// which callback type to pass?
-					(
-					 	(preloadThisScript) ? // depends on script-preloading
-						function onScriptPreloaded(){
-							registryItem.ready = true;
-							for (var i=0; i<registryItem.readyListeners.length; i++) {
-								registryItem.readyListeners[i]();
-							}
-							registryItem.readyListeners = [];
-						} :
-						function onScriptExecuted(){ scriptExecuted(registryItem); }
-					),
-					// signal if script-preloading should be used or not
-					preloadThisScript
-				);
+			// still need to set the type for this entry?
+			if (!registryEntry.type) {
+				registryEntry.type = resourceRecord.type;
 			}
-			else {
-				registryItem = registryItems[0];
-				if (registryItem.finished) {
-					onFinished();
+
+			// any `resourceRecord` options to store?
+			if (!registryEntry.opts) {
+				registryEntry.opts = resourceRecord.opts;
+			}
+
+			// need to add `resourceRecord` as a listener for registry entry updates?
+			if (!~registryEntry.listeners.indexOf( resourceRecord )) {
+				registryEntry.listeners.push( resourceRecord );
+			}
+
+			return registryEntry;
+		}
+
+		function notifyRegistryListeners(registryEntry) {
+			var groups = [];
+
+			// collect all of the affected groups
+			for (var i = 0; i < registryEntry.listeners.length; i++) {
+				if (!~groups.indexOf( registryEntry.listeners[i].group )) {
+					groups.push( registryEntry.listeners[i].group );
 				}
-				else {
-					registryItem.finishedListeners.push(onFinished);
-				}
 			}
 
-
-			function onReady() {
-				scriptObj.onReady(scriptObj,function done(){
-					executePreloadedScript(chainOpts,scriptObj,registryItem);
-				});
-			}
-
-			function onFinished() {
-				scriptObj.onFinished(scriptObj,chainGroup);
+			// schedule all the group checks
+			for (var i = 0; i < groups.length; i++) {
+				groups[i].check();
 			}
 		}
 
-		// creates a closure for each separate chain spawned from this $LAB instance, to keep state cleanly separated between chains
 		function createChainInstance() {
-			var chainedAPI,
-				chainOpts = mergeObjs(globalDefaults,{}),
-				chain = [],
-				execCursor = 0,
-				scriptsCurrentlyLoading = false,
-				group
-			;
+			var chainOpts = assign( {}, defaults );
+			var chain = [];
+			var checkHook;
 
-			// API for $LAB chains
-			chainedAPI = {
+			var chainAPI = {
+				setOptions: setOptions,
 				script: script,
 				wait: wait,
 			};
 
-			// the first chain link API (includes `setOptions` only this first time)
-			return {
-				script: chainedAPI.script,
-				wait: chainedAPI.wait,
-				setOptions: function setOptions(opts){
-					mergeObjs(opts,chainOpts);
-					return chainedAPI;
-				}
-			};
+			return chainAPI;
 
 
 			// **************************************
 
-			// called when a script has finished preloading
-			function onChainScriptReady(scriptObj,execTrigger) {
-				/*!START_DEBUG*/if (chainOpts[debugMode]) logMsg("script preload finished: "+scriptObj.realSrc);/*!END_DEBUG*/
-				scriptObj.ready = true;
-				scriptObj.execTrigger = execTrigger;
-				advanceExecutionCursor(); // will only check for 'ready' scripts to be executed
+			function setOptions(opts) {
+				chainOpts = assign( chainOpts, opts );
+				return chainAPI;
 			}
 
-			// called when a script has finished executing
-			function onChainScriptExecuted(scriptObj,chainGroup) {
-				/*!START_DEBUG*/if (chainOpts[debugMode]) logMsg("script execution finished: "+scriptObj.realSrc);/*!END_DEBUG*/
-				scriptObj.ready = scriptObj.finished = true;
-				scriptObj.execTrigger = null;
-				// check if chain group is all finished
-				for (var i=0; i<chainGroup.scripts.length; i++) {
-					if (!chainGroup.scripts[i].finished) return;
+			function script() {
+				for (var i = 0; i < arguments.length; i++) {
+					addChainResource( "script", arguments[i] );
 				}
-				// chainGroup is all finished if we get this far
-				chainGroup.finished = true;
-				advanceExecutionCursor();
+				scheduleChainCheck();
+
+				return chainAPI;
 			}
 
-			// main driver for executing each part of the chain
-			function advanceExecutionCursor() {
-				while (execCursor < chain.length) {
-					if (typeof chain[execCursor] == "function") {
-						/*!START_DEBUG*/if (chainOpts[debugMode]) logMsg("$LAB.wait() executing: "+chain[execCursor]);/*!END_DEBUG*/
-						try { chain[execCursor++](); } catch (err) {
-							/*!START_DEBUG*/if (chainOpts[debugMode]) logError("$LAB.wait() error caught: ",err);/*!END_DEBUG*/
-						}
-						continue;
-					}
-					else if (!chain[execCursor].finished) {
-						if (checkChainGroupScriptsReady(chain[execCursor])) continue;
-						break;
-					}
-					execCursor++;
-				}
-				// we've reached the end of the chain (so far)
-				if (execCursor == chain.length) {
-					scriptsCurrentlyLoading = false;
-					group = false;
-				}
-			}
-
-			// setup next chain script group
-			function initScriptChainGroup() {
-				if (!group || !group.scripts) {
-					chain.push(group = {scripts:[],finished:true});
-				}
-			}
-
-			// start loading one or more scripts
-			function script(){
-				for (var i=0; i<arguments.length; i++) {
-					(function loopScope(scriptObj,scriptList){
-						var spliceArgs;
-
-						if (!Array.isArray(scriptObj)) {
-							scriptList = [scriptObj];
-						}
-						for (var j=0; j<scriptList.length; j++) {
-							initScriptChainGroup();
-							scriptObj = scriptList[j];
-
-							if (typeof scriptObj == "function") scriptObj = scriptObj();
-							if (!scriptObj) continue;
-							if (Array.isArray(scriptObj)) {
-								// set up an array of arguments to pass to splice()
-								spliceArgs = [].slice.call(scriptObj); // first include the actual array elements we want to splice in
-								spliceArgs.unshift(j,1); // next, put the `index` and `howMany` parameters onto the beginning of the splice-arguments array
-								[].splice.apply(scriptList,spliceArgs); // use the splice-arguments array as arguments for splice()
-								j--; // adjust `j` to account for the loop's subsequent `j++`, so that the next loop iteration uses the same `j` index value
-								continue;
-							}
-							if (typeof scriptObj == "string") scriptObj = {src:scriptObj};
-							scriptObj = mergeObjs(scriptObj,{
-								ready:false,
-								onReady:onChainScriptReady,
-								finished:false,
-								onFinished:onChainScriptExecuted
-							});
-							group.finished = false;
-							group.scripts.push(scriptObj);
-
-							setupScript(chainOpts,scriptObj,group,(canUsePreloading && scriptsCurrentlyLoading));
-							scriptsCurrentlyLoading = true;
-
-							if (chainOpts[keyAlwaysPreserveOrder]) chainedAPI.wait();
-						}
-					})(arguments[i],arguments[i]);
-				}
-				return chainedAPI;
-			}
-
-			// force LABjs to pause in execution at this point in the chain, until the execution thus far finishes, before proceeding
-			function wait(){
+			function wait() {
 				if (arguments.length > 0) {
-					for (var i=0; i<arguments.length; i++) {
-						chain.push(arguments[i]);
+					for (var i = 0; i < arguments.length; i++) {
+						addChainWait( arguments[i] );
 					}
-					group = chain[chain.length-1];
 				}
-				else group = false;
+				else {
+					// placeholder wait entry
+					addChainWait( /*waitEntry=*/true );
+				}
+				scheduleChainCheck();
 
-				advanceExecutionCursor();
+				return chainAPI;
+			}
 
-				return chainedAPI;
+			function addChainResource(resourceType,resourceRecord) {
+				// need to add next group to chain?
+				if (
+					chain.length == 0 ||
+					!chain[chain.length - 1].isGroup ||
+					chain[chain.length - 1].complete ||
+					(!realPreloading && !scriptOrderedAsync) ||		// TODO: only apply these checks for scripts
+					(chainOpts[optAlwaysPreserveOrder] && !scriptOrderedAsync)
+				) {
+					var groupEntry = new createGroupEntry( scheduleChainCheck );
+					chain.push( groupEntry );
+				}
+
+				var currentGroup = chain[chain.length - 1];
+				currentGroup.complete = false;
+
+				// format resource record and canonicalize URL
+				if (typeof resourceRecord == "string") {
+					resourceRecord = {
+						type: resourceType,
+						src: canonicalURL( resourceRecord, chainOpts[optBasePath] ),
+						group: currentGroup,
+					};
+				}
+				else {
+					resourceRecord = {
+						type: resourceType,
+						src: canonicalURL( resourceRecord.src, chainOpts[optBasePath] ),
+						opts: resourceRecord,
+						group: currentGroup,
+					};
+				}
+
+				// add resource to current group
+				currentGroup.resources.push( resourceRecord );
+
+				// add/lookup resource in the global registry
+				var registryEntry = registerResource( resourceRecord );
+
+				// need to start preloading this resource?
+				if (realPreloading && !registryEntry.preloadRequested) {
+					var elem = preloadResource( registryEntry );
+
+					// listen for preload to complete
+					elem.addEventListener( "load", function resourcePreloaded(){
+						console.log("resource preloaded!",resourceRecord.src);
+						elem.removeEventListener( "load", resourcePreloaded );
+						elem.parentNode.removeChild( elem );
+						registryEntry.preloaded = true;
+						notifyRegistryListeners( registryEntry );
+					} );
+				}
+			}
+
+			function addChainWait(waitEntry) {
+				// need empty group placeholder at beginning of chain?
+				if (chain.length == 0) {
+					var groupEntry = new createGroupEntry();
+					groupEntry.ready = groupEntry.complete = true;
+					chain.push( groupEntry );
+				}
+
+				chain.push( {wait: waitEntry} );
+			}
+
+			function scheduleChainCheck() {
+				if (checkHook == null) {
+					checkHook = setTimeout( advanceChain, 0 );
+				}
+			}
+
+			function advanceChain() {
+				checkHook = null;
+
+				for (var i = 0; i < chain.length; i++) {
+					if (!chain[i].complete) {
+						if (chain[i].isGroup) {
+							checkGroupStatus( chain[i] );
+
+							if (!chain[i].complete) {
+								break;
+							}
+						}
+						else if (typeof chain[i].wait == "function") {
+							try {
+								chain[i].wait();
+								chain[i].complete = true;
+							}
+							catch (err) {
+								if (chainOpts[optDebug]) {
+									throwGlobalError( err );
+								}
+								else {
+									logError( err );
+								}
+								break;
+							}
+						}
+						else {
+							chain[i].complete = true;
+						}
+					}
+				}
+			}
+
+			function checkGroupStatus(group) {
+				// is group in need of potential preload processing?
+				if (!group.ready && !group.complete) {
+					if (realPreloading) {
+						var groupReady = true;
+						for (var i = 0; i < group.resources.length; i++) {
+							if (!registry[group.resources[i].src].preloaded) {
+								groupReady = false;
+								break;
+							}
+						}
+						group.ready = groupReady;
+					}
+					else {
+						group.ready = true;
+					}
+				}
+
+				if (!group.complete && group.ready) {
+					var groupComplete = true;
+
+					for (var i = 0; i < group.resources.length; i++) {
+						(function loopScope(resourceRecord){
+							var registryEntry = registry[resourceRecord.src];
+
+							// resource loading not yet requested?
+							if (!registryEntry.loadRequested) {
+								var elem = loadResource( registryEntry );
+
+								// listen for load to complete
+								elem.addEventListener( "load", function resourceLoaded(){
+									console.log("resource loaded!",resourceRecord.src);
+									elem.removeEventListener( "load", resourceLoaded );
+									registryEntry.complete = true;
+									notifyRegistryListeners( registryEntry );
+								} );
+
+								groupComplete = false;
+							}
+							// resource loading already complete?
+							else if (registryEntry.complete) {
+								return;
+							}
+							else {
+								groupComplete = false;
+
+								// need to register `resourceRecord` as a listener for currently
+								// loading (not yet complete) resource?
+								if (!~registryEntry.listeners.indexOf( resourceRecord )) {
+									registryEntry.listeners.push( resourceRecord );
+								}
+							}
+						})( group.resources[i] );
+					}
+
+					if (groupComplete) {
+						group.complete = true;
+					}
+				}
 			}
 		}
 	}
-
 });
