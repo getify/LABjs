@@ -1,6 +1,6 @@
 {
 	"name": "labjs",
-	"version": "0.0.0-pre1",
+	"version": "3.0.0-pre1",
 	"description": "resource loader",
 	"main": "./src/index.js",
 	"repository": "getify/labjs",
