@@ -1,8 +1,3 @@
-/*! LAB.js
-    v3.0.0-pre1 (c) 2017 Kyle Simpson
-    MIT License
-*/
-
 (function UMD(name,context,definition){
 	if (typeof define === "function" && define.amd) { define(definition); }
 	else { context[name] = definition(name,context); }
