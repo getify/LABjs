@@ -1,0 +1,33 @@
+{
+	"name": "labjs",
+	"version": "0.0.0-pre1",
+	"description": "resource loader",
+	"main": "./src/index.js",
+	"repository": "getify/labjs",
+	"scripts": {
+		"test": "node scripts/node-tests.js",
+		"coverage": "istanbul cover scripts/node-tests.js",
+		"build-core": "node scripts/build-core.js",
+		"build": "npm run build-core",
+		"prepare": "npm run build",
+		"prepublish": "npm run build && npm test"
+	},
+	"devDependencies": {
+		"mock-dom-resources": "~4.0.1",
+		"qunitjs": "~2.3.0",
+		"stable-timers": "~1.0.0",
+		"uglify-js": "~2.8.21"
+	},
+	"keywords": [
+		"script loader",
+		"resource loader",
+		"performance"
+	],
+	"bugs": {
+		"url": "https://github.com/getify/LABjs/issues",
+		"email": "getify@gmail.com"
+	},
+	"homepage": "https://github.com/getify/LABjs",
+	"author": "Kyle Simpson <getify@gmail.com>",
+	"license": "MIT"
+}
