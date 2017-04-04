@@ -174,13 +174,13 @@
 						// resource already (pre)loaded?
 						if (perfEntries.length > 0) {
 							registryEntry.preloaded = true;
-							console.log( "markup link already preloaded", href );
+							// logMsg( "markup link already preloaded", href );
 						}
 						else {
-							console.log( "listening for markup link preload", href );
+							// logMsg( "listening for markup link preload", href );
 							// listen for preload to complete
 							elem.addEventListener( "load", function resourcePreloaded(){
-								console.log("markup link preloaded!",href);
+								// logMsg("markup link preloaded!",href);
 								elem.removeEventListener( "load", resourcePreloaded );
 								registryEntry.preloaded = true;
 								notifyRegistryListeners( registryEntry );
@@ -366,7 +366,7 @@
 
 					// listen for preload to complete
 					elem.addEventListener( "load", function resourcePreloaded(){
-						console.log("resource preloaded!",resourceRecord.src);
+						// logMsg("resource preloaded!",resourceRecord.src);
 						elem.removeEventListener( "load", resourcePreloaded );
 						elem.parentNode.removeChild( elem );
 						registryEntry.preloaded = true;
@@ -457,7 +457,7 @@
 
 								// listen for load to complete
 								elem.addEventListener( "load", function resourceLoaded(){
-									console.log("resource loaded!",resourceRecord.src);
+									// logMsg("resource loaded!",resourceRecord.src);
 									elem.removeEventListener( "load", resourceLoaded );
 									registryEntry.complete = true;
 									notifyRegistryListeners( registryEntry );

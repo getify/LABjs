@@ -2,15 +2,17 @@
 <html>
 <head>
 <meta charset="utf-8" />
-<title>Mock-DOM-Resources Test Suite</title>
-<link rel="stylesheet" href="https://code.jquery.com/qunit/qunit-2.1.1.css">
+<title>LABjs Test Suite</title>
+<link rel="stylesheet" href="https://code.jquery.com/qunit/qunit-2.3.0.css">
 </head>
 <body>
 <div id="qunit"></div>
 <div id="qunit-fixture"></div>
 
 <script src="../src/index.js"></script>
-<script src="https://code.jquery.com/qunit/qunit-2.1.1.js"></script>
+<script>var get$LAB = $LAB.noConflict().sandbox</script>
+<script src="../node_modules/mock-dom-resources/dist/mock-dom.js"></script>
+<script src="https://code.jquery.com/qunit/qunit-2.3.0.js"></script>
 <script src="tests.js"></script>
 </body>
 </html>

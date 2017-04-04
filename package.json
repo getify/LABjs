@@ -13,7 +13,8 @@
 		"prepublish": "npm run build && npm test"
 	},
 	"devDependencies": {
-		"mock-dom-resources": "~4.0.1",
+		"freshy": "~1.0.2",
+		"mock-dom-resources": "~5.0.0",
 		"qunitjs": "~2.3.0",
 		"stable-timers": "~1.0.0",
 		"uglify-js": "~2.8.21"
