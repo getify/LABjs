@@ -6,13 +6,11 @@ QUnit.test( "load a script", function test(assert){
 
 	var { logs, log, error } = collectLogs();
 
-	// only replace globals in node (fails in browser)
-	$DOM.replaceGlobals = (typeof window == "undefined");
 	$DOM( {
+		replaceGlobals: true,
 		sequentialIds: true,
 		log,
 		error,
-		location: "http://some.tld/",
 		resources: [
 			{ url: "http://some.tld/a.js", preloadDelay: 10, preload: true, loadDelay: 5, load: true }
 		]
@@ -21,10 +19,11 @@ QUnit.test( "load a script", function test(assert){
 	var $LAB = get$LAB();
 
 	$LAB
+	.setOptions( {BasePath: "http://some.tld/"} )
 	.script( "a.js" )
 	.wait( function(){
+		$DOM.restoreGlobals();
 		assert.ok( true, "a.js" );
-		// console.log(logs);
 		done();
 	} );
 } );

@@ -11,7 +11,6 @@ require("stable-timers").replaceGlobals();
 
 global.$DOM = require("mock-dom-resources");
 
-
 global.get$LAB = get$LAB;
 
 require("../tests/qunit.config.js");

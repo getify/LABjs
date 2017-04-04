@@ -14,7 +14,7 @@
 	},
 	"devDependencies": {
 		"freshy": "~1.0.2",
-		"mock-dom-resources": "~5.0.0",
+		"mock-dom-resources": "~7.0.0",
 		"qunitjs": "~2.3.0",
 		"stable-timers": "~1.0.0",
 		"uglify-js": "~2.8.21"
