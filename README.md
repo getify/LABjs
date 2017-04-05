@@ -1,7 +1,8 @@
+**IMPORTANT:** This project is undergoing [a complete 3.0 rewrite](https://github.com/getify/LABjs/tree/v3.0). Please [follow the progress](https://github.com/getify/LABjs/issues/113#issuecomment-288885644).
+
+
 LABjs (Loading And Blocking JavaScript)
 =======================================
-
-**NOTE: LABjs is still supported, and still encouraged to be used if it makes sense for your project. But, no further development beyond bug fixes is expected. LABjs is almost 4 years old, and has been stable (no bug fixes/patches) for almost 2 years. Thank you to the community for your support of this project over the last 4 years.**
 
 LABjs is a dynamic script loader intended to replace the use of the ugly, non-performant &lt;script> tag with a flexible and performance-optimized alternative API.
 
